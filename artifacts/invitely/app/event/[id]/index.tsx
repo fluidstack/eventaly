@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LockBadge } from "@/components/LockBadge";
 import { Screen } from "@/components/Screen";
 import { Body, Button, Card, Pill, Section } from "@/components/ui";
-import { getTemplate } from "@/constants/templates";
+import { resolveEventTemplate } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { usePlan } from "@/lib/gating";
 import { formatDate, formatTime, initials, relativeTime } from "@/lib/format";
@@ -36,7 +36,7 @@ export default function EventDashboard() {
     );
   }
 
-  const template = getTemplate(event.templateId);
+  const template = resolveEventTemplate(event);
   const heroSource = event.heroPhotoUri ? { uri: event.heroPhotoUri } : template.image;
   const heroFilter = event.heroPhotoUri ? getHeroFilter(event.heroFilter) : getHeroFilter("none");
 

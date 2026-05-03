@@ -6,7 +6,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 
 import { Pill } from "@/components/ui";
-import { getTemplate } from "@/constants/templates";
+import { resolveEventTemplate } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { formatDate, formatTime } from "@/lib/format";
 import { Event } from "@/store/types";
@@ -14,7 +14,7 @@ import { Event } from "@/store/types";
 export function EventCard({ event }: { event: Event }) {
   const colors = useColors();
   const router = useRouter();
-  const template = getTemplate(event.templateId);
+  const template = resolveEventTemplate(event);
   const yesCount = event.rsvps.filter((r) => r.status === "yes").length;
   const plusOnes = event.rsvps.filter((r) => r.plusOne && r.status === "yes").length;
   const total = yesCount + plusOnes;

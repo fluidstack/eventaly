@@ -6,11 +6,21 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
+import { CustomTemplateFields } from "@/components/CustomTemplateFields";
 import { Field } from "@/components/Field";
 import { HeroPhotoEditor } from "@/components/HeroPhotoEditor";
 import { LockBadge } from "@/components/LockBadge";
 import { Body, Button, Card, EmptyState, H2, Label, Pill, Section } from "@/components/ui";
-import { TEMPLATES, TemplateId, getTemplate, isPremiumTemplate } from "@/constants/templates";
+import {
+  DEFAULT_CUSTOM_ACCENT,
+  DEFAULT_CUSTOM_NAME,
+  DEFAULT_CUSTOM_TAGLINE,
+  TEMPLATES,
+  TemplateId,
+  getTemplate,
+  isPremiumTemplate,
+  resolveEventTemplate,
+} from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { usePlan } from "@/lib/gating";
 import { HeroFilterId, getHeroFilter } from "@/lib/heroFilters";
@@ -43,8 +53,16 @@ export default function NewEventScreen() {
   const [time, setTime] = useState("19:00");
   const [allowGuestUploads, setAllowGuestUploads] = useState(true);
   const [privacy, setPrivacy] = useState<"link" | "invite-only">("link");
+  const [customName, setCustomName] = useState("");
+  const [customTagline, setCustomTagline] = useState("");
+  const [customAccent, setCustomAccent] = useState(DEFAULT_CUSTOM_ACCENT);
 
-  const template = getTemplate(templateId);
+  const template = resolveEventTemplate({
+    templateId,
+    customName,
+    customTagline,
+    customAccent,
+  });
 
   const onPickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -90,6 +108,10 @@ export default function NewEventScreen() {
       templateId,
       heroPhotoUri,
       heroFilter: heroPhotoUri ? heroFilter : undefined,
+      customName: templateId === "custom" ? customName.trim() || DEFAULT_CUSTOM_NAME : undefined,
+      customTagline:
+        templateId === "custom" ? customTagline.trim() || DEFAULT_CUSTOM_TAGLINE : undefined,
+      customAccent: templateId === "custom" ? customAccent : undefined,
       message: message.trim() || template.copyHints[0],
       startISO,
       location: location.trim(),
@@ -109,6 +131,8 @@ export default function NewEventScreen() {
       setMessage(getTemplate(id).copyHints[0]);
     }
   };
+
+  const showCustomFields = templateId === "custom";
 
   return (
     <KeyboardAwareScrollView
@@ -180,6 +204,17 @@ export default function NewEventScreen() {
           );
         })}
       </ScrollView>
+
+      {showCustomFields && (
+        <CustomTemplateFields
+          name={customName}
+          onChangeName={setCustomName}
+          tagline={customTagline}
+          onChangeTagline={setCustomTagline}
+          accent={customAccent}
+          onChangeAccent={setCustomAccent}
+        />
+      )}
 
       <View>
         <Label>Step 2</Label>

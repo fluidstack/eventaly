@@ -9,7 +9,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { Field } from "@/components/Field";
 import { Body, Button, Card, EmptyState, H1, H2, Pill, Section } from "@/components/ui";
-import { getTemplate } from "@/constants/templates";
+import { resolveEventTemplate } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import {
   formatDate,
@@ -44,7 +44,7 @@ export default function GuestViewScreen() {
     );
   }
 
-  const template = getTemplate(event.templateId);
+  const template = resolveEventTemplate(event);
   const heroSource = event.heroPhotoUri ? { uri: event.heroPhotoUri } : template.image;
   const heroFilter = event.heroPhotoUri ? getHeroFilter(event.heroFilter) : getHeroFilter("none");
 

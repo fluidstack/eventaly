@@ -6,11 +6,21 @@ import React, { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
+import { CustomTemplateFields } from "@/components/CustomTemplateFields";
 import { Field } from "@/components/Field";
 import { HeroPhotoEditor } from "@/components/HeroPhotoEditor";
 import { LockBadge } from "@/components/LockBadge";
 import { Button, Card, Label, Pill, Section } from "@/components/ui";
-import { TEMPLATES, TemplateId, getTemplate, isPremiumTemplate } from "@/constants/templates";
+import {
+  DEFAULT_CUSTOM_ACCENT,
+  DEFAULT_CUSTOM_NAME,
+  DEFAULT_CUSTOM_TAGLINE,
+  TEMPLATES,
+  TemplateId,
+  getTemplate,
+  isPremiumTemplate,
+  resolveEventTemplate,
+} from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { usePlan } from "@/lib/gating";
 import { HeroFilterId, getHeroFilter } from "@/lib/heroFilters";
@@ -36,6 +46,9 @@ export default function EditEventScreen() {
   const startDate = event ? new Date(event.startISO) : new Date();
   const [date, setDate] = useState(formatDateForInput(startDate));
   const [time, setTime] = useState(formatTimeForInput(startDate));
+  const [customName, setCustomName] = useState(event?.customName ?? "");
+  const [customTagline, setCustomTagline] = useState(event?.customTagline ?? "");
+  const [customAccent, setCustomAccent] = useState(event?.customAccent ?? DEFAULT_CUSTOM_ACCENT);
 
   if (!event) {
     return (
@@ -45,7 +58,13 @@ export default function EditEventScreen() {
     );
   }
 
-  const template = getTemplate(templateId);
+  const template = resolveEventTemplate({
+    templateId,
+    customName,
+    customTagline,
+    customAccent,
+  });
+  const showCustomFields = templateId === "custom";
 
   const onPickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -76,6 +95,10 @@ export default function EditEventScreen() {
       templateId,
       heroPhotoUri,
       heroFilter: heroPhotoUri ? heroFilter : undefined,
+      customName: templateId === "custom" ? customName.trim() || DEFAULT_CUSTOM_NAME : undefined,
+      customTagline:
+        templateId === "custom" ? customTagline.trim() || DEFAULT_CUSTOM_TAGLINE : undefined,
+      customAccent: templateId === "custom" ? customAccent : undefined,
       message: message.trim(),
       location: location.trim(),
       startISO,
@@ -145,6 +168,17 @@ export default function EditEventScreen() {
           })}
         </ScrollView>
       </Section>
+
+      {showCustomFields && (
+        <CustomTemplateFields
+          name={customName}
+          onChangeName={setCustomName}
+          tagline={customTagline}
+          onChangeTagline={setCustomTagline}
+          accent={customAccent}
+          onChangeAccent={setCustomAccent}
+        />
+      )}
 
       <Section title="Hero photo">
         <Pressable onPress={onPickPhoto}>

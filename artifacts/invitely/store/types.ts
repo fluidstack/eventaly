@@ -55,6 +55,9 @@ export type Event = {
   templateId: TemplateId;
   heroPhotoUri?: string;
   heroFilter?: HeroFilterId;
+  customName?: string;
+  customTagline?: string;
+  customAccent?: string;
   message: string;
   startISO: string;
   location: string;

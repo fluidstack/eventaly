@@ -7,7 +7,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field } from "@/components/Field";
 import { Body, Button, H1, H2 } from "@/components/ui";
-import { TEMPLATES, TemplateId, isPremiumTemplate } from "@/constants/templates";
+import {
+  SELECTABLE_DEFAULT_TEMPLATES,
+  TemplateId,
+  isPremiumTemplate,
+} from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { useInviteStore } from "@/store/InviteStore";
 
@@ -148,7 +152,7 @@ export default function OnboardingScreen() {
                 </Body>
               </View>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                {TEMPLATES.filter((t) => !t.premium).map((t) => {
+                {SELECTABLE_DEFAULT_TEMPLATES.filter((t) => !t.premium).map((t) => {
                   const active = template === t.id;
                   return (
                     <Pressable

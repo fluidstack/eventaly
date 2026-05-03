@@ -6,7 +6,7 @@ import { Alert, Platform, Pressable, Text, View } from "react-native";
 import { Field } from "@/components/Field";
 import { Screen } from "@/components/Screen";
 import { Body, Button, Card, H1, Pill, Section } from "@/components/ui";
-import { TEMPLATES } from "@/constants/templates";
+import { SELECTABLE_DEFAULT_TEMPLATES } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { initials } from "@/lib/format";
 import { usePlan } from "@/lib/gating";
@@ -137,7 +137,7 @@ export default function SettingsScreen() {
 
       <Section title="Default template">
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {TEMPLATES.map((t) => {
+          {SELECTABLE_DEFAULT_TEMPLATES.map((t) => {
             const active = state.profile.defaultTemplate === t.id;
             const locked = !!t.premium && !plan.isHostPlus;
             return (

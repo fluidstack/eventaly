@@ -1,5 +1,7 @@
 import { ImageSourcePropType } from "react-native";
 
+import type { Event } from "@/store/types";
+
 export type TemplateId =
   | "birthday"
   | "wedding"
@@ -7,7 +9,10 @@ export type TemplateId =
   | "baby"
   | "christmas"
   | "newyear"
-  | "christening";
+  | "christening"
+  | "bucks"
+  | "hens"
+  | "custom";
 
 export type Template = {
   id: TemplateId;
@@ -37,6 +42,26 @@ export const PREMIUM_TEMPLATE_IDS: TemplateId[] = [
 export function isPremiumTemplate(id: TemplateId | string | undefined): boolean {
   return PREMIUM_TEMPLATE_IDS.includes(id as TemplateId);
 }
+
+export const CUSTOM_TEMPLATE_ID: TemplateId = "custom";
+
+export const DEFAULT_CUSTOM_NAME = "Custom event";
+export const DEFAULT_CUSTOM_TAGLINE = "Your event, your vibe";
+export const DEFAULT_CUSTOM_ACCENT = "#6366F1";
+
+export const ACCENT_PRESETS: string[] = [
+  "#F43F5E",
+  "#8B5CF6",
+  "#F59E0B",
+  "#14B8A6",
+  "#DC2626",
+  "#0EA5E9",
+  "#22C55E",
+  "#6366F1",
+  "#EC4899",
+  "#0F172A",
+];
+
 
 export const TEMPLATES: Template[] = [
   {
@@ -128,8 +153,74 @@ export const TEMPLATES: Template[] = [
       "Soft prayers, sweet smiles — come share this special day with us.",
     ],
   },
+  {
+    id: "bucks",
+    name: "Bucks",
+    tagline: "One last ride before the ring",
+    accent: "#1E3A8A",
+    image: require("../assets/images/template-bucks.png"),
+    copyHints: [
+      "He's getting hitched — let's send him off properly. You in?",
+      "Whiskey, mischief, and zero adult supervision. Bucks weekend is on.",
+      "One last big night before the big day. Suit up, show up.",
+    ],
+  },
+  {
+    id: "hens",
+    name: "Hens",
+    tagline: "Bubbles, besties & big energy",
+    accent: "#EC4899",
+    image: require("../assets/images/template-hens.png"),
+    copyHints: [
+      "She said yes — now we say cheers. Hens weekend, all the energy.",
+      "Champagne, sashes, and our favourite bride-to-be. Pack pink.",
+      "Last fling before the ring — let's make it a story she'll tell forever.",
+    ],
+  },
+  {
+    id: "custom",
+    name: DEFAULT_CUSTOM_NAME,
+    tagline: DEFAULT_CUSTOM_TAGLINE,
+    accent: DEFAULT_CUSTOM_ACCENT,
+    image: require("../assets/images/template-custom.png"),
+    copyHints: [
+      "Something special is coming together — and we'd love you there.",
+      "Pull up, bring yourself, the rest will sort itself out.",
+      "We're gathering the people we love. Save the date.",
+    ],
+  },
 ];
 
 export function getTemplate(id: TemplateId | string | undefined): Template {
   return TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0];
 }
+
+/**
+ * Returns the template for an event with any per-event custom overrides
+ * (custom name, tagline, accent) applied. Use this anywhere you need to
+ * display the template's name/accent on an event.
+ */
+export function resolveEventTemplate(event: {
+  templateId: TemplateId;
+  customName?: string;
+  customTagline?: string;
+  customAccent?: string;
+}): Template {
+  const base = getTemplate(event.templateId);
+  if (event.templateId !== "custom") return base;
+  return {
+    ...base,
+    name: event.customName?.trim() || DEFAULT_CUSTOM_NAME,
+    tagline: event.customTagline?.trim() || DEFAULT_CUSTOM_TAGLINE,
+    accent: event.customAccent || DEFAULT_CUSTOM_ACCENT,
+  };
+}
+
+/**
+ * Templates the user can pick as their default template (in onboarding /
+ * settings). The "custom" template is excluded because it requires per-event
+ * configuration and has no meaningful default values.
+ */
+export const SELECTABLE_DEFAULT_TEMPLATES: Template[] = TEMPLATES.filter(
+  (t) => t.id !== "custom",
+);

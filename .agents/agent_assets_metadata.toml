@@ -48,3 +48,21 @@ id = "LmgfU_shYxEPG9uNOGY4_"
 uri = "file://artifacts/invitely/assets/images/template-christening.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "ZNFJ6h4KCnJBWBBXNfUyb"
+uri = "file://artifacts/invitely/assets/images/template-bucks.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "lUKfjBCNPpSix0pRkYv0x"
+uri = "file://artifacts/invitely/assets/images/template-hens.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "d5xA4t0HUYP_1RnHN8e-9"
+uri = "file://artifacts/invitely/assets/images/template-custom.png"
+type = "image"
+title = "generated_image"
