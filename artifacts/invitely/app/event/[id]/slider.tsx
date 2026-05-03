@@ -135,12 +135,12 @@ export default function SliderScreen() {
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: "#DCEFE2",
+                backgroundColor: "#D1FAE5",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Feather name="check" size={18} color="#1E6B3A" />
+              <Feather name="check" size={18} color="#065F46" />
             </View>
             <View style={{ flex: 1 }}>
               <Text

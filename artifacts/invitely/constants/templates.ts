@@ -16,7 +16,7 @@ export const TEMPLATES: Template[] = [
     id: "birthday",
     name: "Birthday",
     tagline: "Cake, candles & loud confetti",
-    accent: "#E85A4F",
+    accent: "#F43F5E",
     image: require("../assets/images/template-birthday.png"),
     copyHints: [
       "Another year, another reason to celebrate. Join us for cake & chaos.",
@@ -28,7 +28,7 @@ export const TEMPLATES: Template[] = [
     id: "wedding",
     name: "Wedding",
     tagline: "Vows under string lights",
-    accent: "#B8556B",
+    accent: "#8B5CF6",
     image: require("../assets/images/template-wedding.png"),
     copyHints: [
       "We're getting married — and we'd love to have you there.",
@@ -40,7 +40,7 @@ export const TEMPLATES: Template[] = [
     id: "dinner",
     name: "Dinner Party",
     tagline: "Long table, longer stories",
-    accent: "#D4A574",
+    accent: "#F59E0B",
     image: require("../assets/images/template-dinner.png"),
     copyHints: [
       "Friends, food, and far too much wine. Come hungry.",
@@ -52,7 +52,7 @@ export const TEMPLATES: Template[] = [
     id: "baby",
     name: "Baby Shower",
     tagline: "Tiny socks & sweet wishes",
-    accent: "#E8A87C",
+    accent: "#14B8A6",
     image: require("../assets/images/template-baby.png"),
     copyHints: [
       "A little someone is on the way — come shower us with love.",

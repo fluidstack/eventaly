@@ -305,12 +305,12 @@ function PrivacyRow({
           paddingHorizontal: 8,
           paddingVertical: 3,
           borderRadius: 999,
-          backgroundColor: on ? "#DCEFE2" : colors.muted,
+          backgroundColor: on ? "#D1FAE5" : colors.muted,
         }}
       >
         <Text
           style={{
-            color: on ? "#1E6B3A" : colors.mutedForeground,
+            color: on ? "#065F46" : colors.mutedForeground,
             fontSize: 11,
             fontFamily: "Inter_700Bold",
             letterSpacing: 0.4,
