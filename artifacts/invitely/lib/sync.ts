@@ -59,6 +59,83 @@ export async function publishEventRemote(
   }
 }
 
+export type PublicEvent = {
+  id: string;
+  title: string;
+  templateId: string;
+  heroPhotoUri: string | null;
+  customName: string | null;
+  customTagline: string | null;
+  customAccent: string | null;
+  message: string;
+  startISO: string;
+  location: string;
+  privacy: "link" | "invite-only";
+  hostName: string;
+};
+
+/**
+ * Public read used by the deep-link guest screen when the event isn't in
+ * local store (i.e., a guest tapped a link to an event they don't own).
+ * Pass `inviteToken` for invite-only events.
+ */
+export async function fetchPublicEvent(
+  id: string,
+  inviteToken?: string,
+): Promise<{ event?: PublicEvent; error?: "not_found" | "forbidden" | "network" }> {
+  const base = getApiBase();
+  if (!base) return { error: "network" };
+  const url = new URL(`${base}/events/${encodeURIComponent(id)}`);
+  if (inviteToken) url.searchParams.set("t", inviteToken);
+  try {
+    const res = await fetch(url.toString());
+    if (res.status === 404) return { error: "not_found" };
+    if (res.status === 403) return { error: "forbidden" };
+    if (!res.ok) return { error: "network" };
+    return { event: (await res.json()) as PublicEvent };
+  } catch {
+    return { error: "network" };
+  }
+}
+
+/**
+ * Submit a public RSVP from the in-app deep-link guest screen (mirrors what
+ * the web landing page does).
+ */
+export async function submitPublicRsvp(
+  id: string,
+  payload: {
+    guestName: string;
+    status: "yes" | "no" | "maybe";
+    message?: string;
+    plusOne?: boolean;
+    dietary?: string;
+    inviteToken?: string;
+  },
+): Promise<{ ok: boolean; error?: string }> {
+  const base = getApiBase();
+  if (!base) return { ok: false, error: "no_host" };
+  const url = new URL(`${base}/events/${encodeURIComponent(id)}/rsvps`);
+  if (payload.inviteToken) url.searchParams.set("t", payload.inviteToken);
+  try {
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        guestName: payload.guestName,
+        status: payload.status,
+        message: payload.message,
+        plusOne: !!payload.plusOne,
+        dietary: payload.dietary,
+      }),
+    });
+    if (!res.ok) return { ok: false, error: `http_${res.status}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 /**
  * Fetch RSVPs that have arrived on the server since `since` (ISO timestamp).
  */
