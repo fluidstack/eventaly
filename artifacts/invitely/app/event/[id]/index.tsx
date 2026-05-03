@@ -11,6 +11,7 @@ import { Body, Button, Card, Pill, Section } from "@/components/ui";
 import { getTemplate } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { formatDate, formatTime, initials, relativeTime } from "@/lib/format";
+import { getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
 
 export default function EventDashboard() {
@@ -33,6 +34,7 @@ export default function EventDashboard() {
 
   const template = getTemplate(event.templateId);
   const heroSource = event.heroPhotoUri ? { uri: event.heroPhotoUri } : template.image;
+  const heroFilter = event.heroPhotoUri ? getHeroFilter(event.heroFilter) : getHeroFilter("none");
 
   const yes = event.rsvps.filter((r) => r.status === "yes").length;
   const no = event.rsvps.filter((r) => r.status === "no").length;
@@ -73,6 +75,20 @@ export default function EventDashboard() {
       <Screen contentStyle={{ paddingBottom: 60 }} noTopInset>
         <View style={{ height: 320 }}>
           <Image source={heroSource} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+          {heroFilter.overlayOpacity > 0 && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                backgroundColor: heroFilter.overlayColor,
+                opacity: heroFilter.overlayOpacity,
+              }}
+            />
+          )}
           <LinearGradient
             colors={["rgba(0,0,0,0.4)", "transparent", "rgba(0,0,0,0.7)"]}
             locations={[0, 0.4, 1]}

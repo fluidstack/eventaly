@@ -16,6 +16,7 @@ import {
   formatTime,
   googleCalendarUrl,
 } from "@/lib/format";
+import { getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
 import { RsvpStatus } from "@/store/types";
 
@@ -43,6 +44,7 @@ export default function GuestViewScreen() {
 
   const template = getTemplate(event.templateId);
   const heroSource = event.heroPhotoUri ? { uri: event.heroPhotoUri } : template.image;
+  const heroFilter = event.heroPhotoUri ? getHeroFilter(event.heroFilter) : getHeroFilter("none");
 
   const onSubmit = () => {
     if (!name.trim() || !status) return;
@@ -79,6 +81,20 @@ export default function GuestViewScreen() {
     >
       <View style={{ height: 380 }}>
         <Image source={heroSource} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+        {heroFilter.overlayOpacity > 0 && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              backgroundColor: heroFilter.overlayColor,
+              opacity: heroFilter.overlayOpacity,
+            }}
+          />
+        )}
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.55)"]}
           style={{ position: "absolute", inset: 0 }}

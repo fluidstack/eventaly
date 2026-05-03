@@ -1,4 +1,5 @@
 import { TemplateId } from "@/constants/templates";
+import { HeroFilterId } from "@/lib/heroFilters";
 
 export type RsvpStatus = "yes" | "no" | "maybe";
 
@@ -42,6 +43,7 @@ export type Event = {
   title: string;
   templateId: TemplateId;
   heroPhotoUri?: string;
+  heroFilter?: HeroFilterId;
   message: string;
   startISO: string;
   location: string;

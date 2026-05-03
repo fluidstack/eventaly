@@ -7,9 +7,11 @@ import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { Field } from "@/components/Field";
+import { HeroPhotoEditor } from "@/components/HeroPhotoEditor";
 import { Body, Button, Card, EmptyState, H2, Label, Pill, Section } from "@/components/ui";
 import { TEMPLATES, TemplateId, getTemplate } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
+import { HeroFilterId, getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
 
 export default function NewEventScreen() {
@@ -21,6 +23,9 @@ export default function NewEventScreen() {
   const [title, setTitle] = useState("");
   const [templateId, setTemplateId] = useState<TemplateId>(defaultTemplate);
   const [heroPhotoUri, setHeroPhotoUri] = useState<string | undefined>();
+  const [heroFilter, setHeroFilter] = useState<HeroFilterId>("none");
+  const [editorSourceUri, setEditorSourceUri] = useState<string | undefined>();
+  const [editorOpen, setEditorOpen] = useState(false);
   const [message, setMessage] = useState(getTemplate(defaultTemplate).copyHints[0]);
   const [location, setLocation] = useState("");
   const [date, setDate] = useState(defaultDate());
@@ -33,13 +38,19 @@ export default function NewEventScreen() {
   const onPickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 0.9,
     });
     if (!result.canceled && result.assets[0]) {
-      setHeroPhotoUri(result.assets[0].uri);
+      setEditorSourceUri(result.assets[0].uri);
+      setEditorOpen(true);
     }
+  };
+
+  const onAdjustExisting = () => {
+    if (!heroPhotoUri) return;
+    setEditorSourceUri(heroPhotoUri);
+    setEditorOpen(true);
   };
 
   const startISO = useMemo(() => {
@@ -59,6 +70,7 @@ export default function NewEventScreen() {
       title: title.trim(),
       templateId,
       heroPhotoUri,
+      heroFilter: heroPhotoUri ? heroFilter : undefined,
       message: message.trim() || template.copyHints[0],
       startISO,
       location: location.trim(),
@@ -159,6 +171,20 @@ export default function NewEventScreen() {
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
             />
+            {heroPhotoUri && getHeroFilter(heroFilter).overlayOpacity > 0 && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  backgroundColor: getHeroFilter(heroFilter).overlayColor,
+                  opacity: getHeroFilter(heroFilter).overlayOpacity,
+                }}
+              />
+            )}
             <View
               style={{
                 position: "absolute",
@@ -212,35 +238,76 @@ export default function NewEventScreen() {
           </View>
         </Pressable>
         {heroPhotoUri && (
-          <Pressable
-            onPress={() => setHeroPhotoUri(undefined)}
-            style={({ pressed }) => ({
-              alignSelf: "flex-start",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 999,
-              borderWidth: 1,
-              borderColor: colors.border,
-              backgroundColor: colors.card,
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Feather name="rotate-ccw" size={13} color={colors.foreground} />
-            <Text
-              style={{
-                color: colors.foreground,
-                fontFamily: "Inter_600SemiBold",
-                fontSize: 12,
-              }}
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            <Pressable
+              onPress={onAdjustExisting}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+                opacity: pressed ? 0.85 : 1,
+              })}
             >
-              Use template image
-            </Text>
-          </Pressable>
+              <Feather name="crop" size={13} color={colors.foreground} />
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 12,
+                }}
+              >
+                Adjust crop & filter
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setHeroPhotoUri(undefined);
+                setHeroFilter("none");
+              }}
+              style={({ pressed }) => ({
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Feather name="rotate-ccw" size={13} color={colors.foreground} />
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 12,
+                }}
+              >
+                Use template image
+              </Text>
+            </Pressable>
+          </View>
         )}
       </View>
+      <HeroPhotoEditor
+        visible={editorOpen}
+        sourceUri={editorSourceUri}
+        initialFilter={heroFilter}
+        onCancel={() => setEditorOpen(false)}
+        onSave={({ uri, filter }) => {
+          setHeroPhotoUri(uri);
+          setHeroFilter(filter);
+          setEditorOpen(false);
+        }}
+      />
 
       <View>
         <Label>Step 3</Label>
