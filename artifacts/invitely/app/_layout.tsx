@@ -9,11 +9,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AnimatedSplash } from "@/components/AnimatedSplash";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useColors } from "@/hooks/useColors";
 import { SubscriptionProvider, useSubscription } from "@/lib/revenuecat";
@@ -61,6 +62,10 @@ function RootLayoutNav() {
       />
       <Stack.Screen name="event/[id]/uploads" options={{ title: "Photo Queue" }} />
       <Stack.Screen name="event/[id]/guests" options={{ title: "Guest List" }} />
+      <Stack.Screen
+        name="event/[id]/contacts"
+        options={{ title: "Pick Contacts", presentation: "modal" }}
+      />
       <Stack.Screen name="event/[id]/slider" options={{ title: "Photo Slider" }} />
       <Stack.Screen
         name="upgrade"
@@ -77,12 +82,15 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded, fontError]);
+
+  const onSplashFinish = useCallback(() => setSplashDone(true), []);
 
   if (!fontsLoaded && !fontError) return null;
 
@@ -90,7 +98,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView>
+          <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
               <InviteStoreProvider>
                 <RevenueCatGate>
@@ -99,6 +107,7 @@ export default function RootLayout() {
                     <RootLayoutNav />
                   </EventProClaimsSync>
                 </RevenueCatGate>
+                {!splashDone && <AnimatedSplash onFinish={onSplashFinish} />}
               </InviteStoreProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

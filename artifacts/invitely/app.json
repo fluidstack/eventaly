@@ -9,9 +9,9 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/icon.png",
+      "image": "./assets/images/splash-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FAFAF7"
+      "backgroundColor": "#0B0B12"
     },
     "ios": {
       "supportsTablet": false
@@ -34,6 +34,12 @@
         {
           "photosPermission": "Allow Invitely to add photos from your library to invitations and the event gallery.",
           "cameraPermission": "Allow Invitely to capture event photos with your camera."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Invitely to read your contacts so you can pick people to invite. Contacts stay on this device — only those you invite are saved."
         }
       ]
     ],

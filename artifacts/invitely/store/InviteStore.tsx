@@ -13,6 +13,8 @@ import {
   AppNotification,
   AppState,
   Event,
+  InviteChannel,
+  InvitedGuest,
   Profile,
   Rsvp,
   Slider,
@@ -86,6 +88,7 @@ function seedState(): AppState {
       },
     ],
     uploads: [],
+    invited: [],
     slider: { published: false, preset: "fade", orderedUploadIds: [] },
     createdAt: new Date(now.getTime() - 86400000 * 4).toISOString(),
   };
@@ -132,7 +135,7 @@ type Ctx = {
   ready: boolean;
   // events
   createEvent: (
-    e: Omit<Event, "id" | "rsvps" | "uploads" | "slider" | "createdAt">,
+    e: Omit<Event, "id" | "rsvps" | "uploads" | "invited" | "slider" | "createdAt">,
   ) => Event;
   updateEvent: (id: string, patch: Partial<Event>) => void;
   deleteEvent: (id: string) => void;
@@ -166,6 +169,12 @@ type Ctx = {
   // notifications
   markAllRead: () => void;
   pushNotification: (n: Omit<AppNotification, "id" | "createdAt" | "read">) => void;
+  // invited contacts
+  recordInvitedContacts: (
+    eventId: string,
+    contacts: Array<{ name: string; phone?: string; email?: string }>,
+    channel: InviteChannel,
+  ) => InvitedGuest[];
   resetData: () => void;
 };
 
@@ -191,7 +200,22 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
           if (!parsed.profile.id) {
             parsed.profile.id = uid();
           }
-          setState(parsed);
+          const migrated: AppState = {
+            ...parsed,
+            events: (parsed.events ?? []).map((e) => ({
+              ...e,
+              rsvps: e.rsvps ?? [],
+              uploads: e.uploads ?? [],
+              invited: e.invited ?? [],
+              slider: e.slider ?? {
+                published: false,
+                preset: "fade",
+                orderedUploadIds: [],
+              },
+            })),
+            notifications: parsed.notifications ?? [],
+          };
+          setState(migrated);
         }
       } catch {
         // ignore — fall back to seed
@@ -237,6 +261,7 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
           id: uid(),
           rsvps: [],
           uploads: [],
+          invited: [],
           slider: { published: false, preset: "fade", orderedUploadIds: [] },
           createdAt: new Date().toISOString(),
         };
@@ -431,6 +456,55 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
         }));
       },
       pushNotification,
+      recordInvitedContacts: (eventId, contacts, channel) => {
+        const created: InvitedGuest[] = [];
+        setState((s) => ({
+          ...s,
+          events: s.events.map((e) => {
+            if (e.id !== eventId) return e;
+            const existing = e.invited ?? [];
+            const next: InvitedGuest[] = [...existing];
+            const keyOf = (c: { name: string; phone?: string; email?: string }) =>
+              (c.phone || c.email || c.name).toLowerCase().replace(/\s+/g, "");
+            const seen = new Set(next.map((c) => keyOf(c)));
+            const sentAt = new Date().toISOString();
+            for (const c of contacts) {
+              const k = keyOf(c);
+              if (seen.has(k)) continue;
+              seen.add(k);
+              const entry: InvitedGuest = {
+                id: uid(),
+                name: c.name,
+                phone: c.phone,
+                email: c.email,
+                channel,
+                sentAt,
+              };
+              next.unshift(entry);
+              created.push(entry);
+            }
+            return { ...e, invited: next };
+          }),
+        }));
+        if (created.length > 0) {
+          const channelLabel: Record<InviteChannel, string> = {
+            sms: "Messages",
+            whatsapp: "WhatsApp",
+            email: "Email",
+            share: "the share sheet",
+          };
+          pushNotification({
+            eventId,
+            kind: "system",
+            title: `Invited ${created.length} guest${created.length === 1 ? "" : "s"} via ${channelLabel[channel]}`,
+            body: created
+              .slice(0, 3)
+              .map((c) => c.name)
+              .join(", ") + (created.length > 3 ? ` and ${created.length - 3} more` : ""),
+          });
+        }
+        return created;
+      },
       resetData: () => setState(seedState()),
     }),
     [state, ready, pushNotification],

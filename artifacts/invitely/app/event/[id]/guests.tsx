@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, Share, Text, View } from "react-native";
@@ -10,8 +11,9 @@ import { Body, Button, Card, EmptyState, Pill, PillTone, Section } from "@/compo
 import { useColors } from "@/hooks/useColors";
 import { usePlan } from "@/lib/gating";
 import { csvEscape, formatDateTime, initials, relativeTime } from "@/lib/format";
+import { buildInviteMessage, firstNameOf } from "@/lib/inviteText";
 import { useInviteStore } from "@/store/InviteStore";
-import { Rsvp, RsvpStatus } from "@/store/types";
+import { InviteChannel, InvitedGuest, Rsvp, RsvpStatus } from "@/store/types";
 
 const FILTERS: { key: RsvpStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -79,6 +81,39 @@ export default function GuestListScreen() {
 
   const yes = event.rsvps.filter((r) => r.status === "yes").length;
   const plusOnes = event.rsvps.filter((r) => r.status === "yes" && r.plusOne).length;
+  const invited = event.invited ?? [];
+
+  const onResend = async (g: InvitedGuest) => {
+    const link = Linking.createURL(`/event/${event.id}/guest`);
+    const message = buildInviteMessage({
+      recipientFirstName: firstNameOf(g.name),
+      hostName: state.profile.name,
+      eventTitle: event.title,
+      startISO: event.startISO,
+      message: event.message,
+      link,
+    });
+    let url: string | null = null;
+    if (g.channel === "email" && g.email) {
+      url = `mailto:${g.email}?subject=${encodeURIComponent(event.title)}&body=${encodeURIComponent(message)}`;
+    } else if (g.channel === "whatsapp" && g.phone) {
+      const num = g.phone.replace(/[^\d+]/g, "");
+      url = `whatsapp://send?phone=${encodeURIComponent(num)}&text=${encodeURIComponent(message)}`;
+    } else if (g.channel === "sms" && g.phone) {
+      const scheme = Platform.OS === "android" ? "smsto:" : "sms:";
+      url = `${scheme}${g.phone}${Platform.OS === "ios" ? "&" : "?"}body=${encodeURIComponent(message)}`;
+    }
+    if (url) {
+      if (Platform.OS === "web") window.open(url, "_blank");
+      else Linking.openURL(url).catch(() => {});
+      return;
+    }
+    if (Platform.OS === "web") {
+      await Clipboard.setStringAsync(message);
+    } else {
+      await Share.share({ message });
+    }
+  };
 
   return (
     <Screen contentStyle={{ padding: 20, gap: 18 }}>
@@ -107,6 +142,7 @@ export default function GuestListScreen() {
         </Text>
         <Body muted style={{ marginTop: 6 }}>
           {yes} confirmed · {plusOnes} plus ones · {event.rsvps.length} total responses
+          {invited.length > 0 ? ` · ${invited.length} invited` : ""}
         </Body>
       </View>
 
@@ -171,6 +207,16 @@ export default function GuestListScreen() {
             </Text>
           </ScrollView>
         </Card>
+      )}
+
+      {invited.length > 0 && (
+        <Section title={`Invited — no reply yet (${invited.length})`}>
+          <View style={{ gap: 8 }}>
+            {invited.map((g) => (
+              <InvitedRow key={g.id} g={g} onResend={() => onResend(g)} />
+            ))}
+          </View>
+        </Section>
       )}
 
       <ScrollView
@@ -344,6 +390,69 @@ function GuestRow({ r }: { r: Rsvp }) {
             </Text>
           </View>
         </View>
+      </View>
+    </Card>
+  );
+}
+
+function InvitedRow({ g, onResend }: { g: InvitedGuest; onResend: () => void }) {
+  const colors = useColors();
+  const channelIcon: Record<InviteChannel, React.ComponentProps<typeof Feather>["name"]> = {
+    sms: "message-circle",
+    whatsapp: "phone",
+    email: "mail",
+    share: "share",
+  };
+  return (
+    <Card>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: colors.muted,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: colors.mutedForeground,
+              fontFamily: "Inter_700Bold",
+              fontSize: 13,
+            }}
+          >
+            {initials(g.name)}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text
+              style={{
+                color: colors.foreground,
+                fontFamily: "Inter_600SemiBold",
+                fontSize: 14,
+              }}
+            >
+              {g.name}
+            </Text>
+            <Feather name={channelIcon[g.channel]} size={12} color={colors.mutedForeground} />
+          </View>
+          <Text
+            style={{
+              color: colors.mutedForeground,
+              fontFamily: "Inter_400Regular",
+              fontSize: 12,
+              marginTop: 2,
+            }}
+            numberOfLines={1}
+          >
+            Sent {relativeTime(g.sentAt)}
+            {g.phone ? ` · ${g.phone}` : g.email ? ` · ${g.email}` : ""}
+          </Text>
+        </View>
+        <Button label="Resend" size="sm" variant="ghost" icon="repeat" onPress={onResend} />
       </View>
     </Card>
   );

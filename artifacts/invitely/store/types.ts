@@ -36,6 +36,17 @@ export type Slider = {
   publishedAt?: string;
 };
 
+export type InviteChannel = "sms" | "whatsapp" | "email" | "share";
+
+export type InvitedGuest = {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  channel: InviteChannel;
+  sentAt: string;
+};
+
 export type EventPrivacy = "link" | "invite-only";
 
 export type Event = {
@@ -51,6 +62,7 @@ export type Event = {
   allowGuestUploads: boolean;
   rsvps: Rsvp[];
   uploads: Upload[];
+  invited: InvitedGuest[];
   slider: Slider;
   createdAt: string;
 };

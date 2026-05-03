@@ -11,6 +11,7 @@ import { Screen } from "@/components/Screen";
 import { Body, Button, Card, EmptyState, H2, Pill, Section } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { formatDateTime } from "@/lib/format";
+import { buildInviteMessage } from "@/lib/inviteText";
 import { useInviteStore } from "@/store/InviteStore";
 
 export default function InviteShareScreen() {
@@ -33,7 +34,13 @@ export default function InviteShareScreen() {
     () => Linking.createURL(`/event/${event.id}/guest`),
     [event.id],
   );
-  const shareText = `${state.profile.name?.split(" ")[0] || "I"} invited you to ${event.title} — ${formatDateTime(event.startISO)}\n\n${event.message}\n\nRSVP: ${link}`;
+  const shareText = buildInviteMessage({
+    hostName: state.profile.name,
+    eventTitle: event.title,
+    startISO: event.startISO,
+    message: event.message,
+    link,
+  });
 
   const onCopy = async () => {
     await Clipboard.setStringAsync(link);
@@ -221,44 +228,48 @@ export default function InviteShareScreen() {
       </Section>
 
       <Section title="Contacts">
-        <Card>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: colors.secondary,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Feather name="users" size={18} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
+        <Pressable onPress={() => router.push(`/event/${event.id}/contacts`)}>
+          <Card>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View
                 style={{
-                  color: colors.foreground,
-                  fontFamily: "Inter_600SemiBold",
-                  fontSize: 14,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: colors.secondary,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                Import phone contacts
-              </Text>
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontFamily: "Inter_400Regular",
-                  fontSize: 12,
-                  marginTop: 2,
-                }}
-              >
-                Opt-in only. We'll only store who you invite.
-              </Text>
+                <Feather name="users" size={18} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 14,
+                  }}
+                >
+                  Import phone contacts
+                </Text>
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontFamily: "Inter_400Regular",
+                    fontSize: 12,
+                    marginTop: 2,
+                  }}
+                >
+                  {(event.invited?.length ?? 0) > 0
+                    ? `${event.invited?.length} invited so far · pick more`
+                    : "Opt-in only. We'll only store who you invite."}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
             </View>
-            <Pill label="Soon" tone="neutral" />
-          </View>
-        </Card>
+          </Card>
+        </Pressable>
       </Section>
 
       <Body muted style={{ fontSize: 12, textAlign: "center" }}>
