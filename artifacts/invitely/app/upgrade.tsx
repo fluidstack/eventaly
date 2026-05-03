@@ -16,12 +16,6 @@ import { useInviteStore } from "@/store/InviteStore";
 
 type PlanKey = "event_pro" | "host_plus_monthly" | "host_plus_yearly";
 
-const FALLBACK_PRICES: Record<PlanKey, string> = {
-  event_pro: "$12",
-  host_plus_monthly: "$6.99 / mo",
-  host_plus_yearly: "$59 / yr",
-};
-
 const PLAN_META: Record<
   PlanKey,
   { title: string; subtitle: string; tag?: string; packageId: string; entitlement: "event_pro" | "host_plus" }
@@ -63,7 +57,7 @@ export default function UpgradeScreen() {
     available,
     currentOffering,
     isHostPlus,
-    hasEventProEntitlement,
+    eventProPurchaseCount,
     isLoading,
     isRestoring,
     purchase,
@@ -71,16 +65,12 @@ export default function UpgradeScreen() {
   } = useSubscription();
   const { unlockEvent, state } = useInviteStore();
   const event = eventId ? state.events.find((e) => e.id === eventId) : undefined;
-  const eventLocallyUnlocked = eventId
-    ? (state.profile.unlockedEventIds ?? []).includes(eventId)
-    : false;
-  // hasEventProEntitlement implies an active one-time unlock that hasn't yet
-  // been pinned to a local event id (e.g. fresh install + restore).
+  const unlockedEventIds = state.profile.unlockedEventIds ?? [];
+  const eventLocallyUnlocked = eventId ? unlockedEventIds.includes(eventId) : false;
+  // Lifetime Event Pro purchases minus how many have been claimed locally.
+  const unclaimedCount = Math.max(0, eventProPurchaseCount - unlockedEventIds.length);
   const canClaimForEvent =
-    !!eventId &&
-    hasEventProEntitlement &&
-    !eventLocallyUnlocked &&
-    !isHostPlus;
+    !!eventId && !eventLocallyUnlocked && !isHostPlus && unclaimedCount > 0;
 
   const [pendingKey, setPendingKey] = useState<PlanKey | null>(null);
   const isPending = (k: PlanKey) => (pendingKey as string | null) === k;
@@ -96,9 +86,10 @@ export default function UpgradeScreen() {
     return result;
   }, [currentOffering]);
 
-  const priceFor = (key: PlanKey): string => {
-    const pkg = packagesByKey[key];
-    return pkg?.product?.priceString ?? FALLBACK_PRICES[key];
+  const priceFor = (key: PlanKey): string | undefined => {
+    // Live pricing only — no hardcoded fallbacks. Returns undefined if the
+    // store hasn't loaded the package yet so callers can render a placeholder.
+    return packagesByKey[key]?.product?.priceString;
   };
 
   useEffect(() => {
@@ -115,7 +106,7 @@ export default function UpgradeScreen() {
     }
     setPendingKey(key);
     try {
-      const info = await purchase(pkg);
+      const info = await purchase(pkg, { eventId: eventId ?? undefined });
       const meta = PLAN_META[key];
       const grantedEventPro = Boolean(info?.entitlements?.active?.event_pro);
       const grantedHostPlus = Boolean(info?.entitlements?.active?.host_plus);
@@ -152,10 +143,12 @@ export default function UpgradeScreen() {
     }
   };
 
-  // Disable buy when host plus active OR they already hold an event_pro
-  // entitlement (they should claim/use it instead of buying again).
+  // Buy is disabled if Host Plus already covers everything, no live package,
+  // or the user has an unclaimed Event Pro waiting to be applied (they should
+  // claim it instead of double-paying).
+  const hasLivePackage = (key: PlanKey) => Boolean(packagesByKey[key]);
   const eventProDisabled =
-    !available || isHostPlus || (hasEventProEntitlement && !canClaimForEvent);
+    !available || isHostPlus || (unclaimedCount > 0 && !canClaimForEvent);
   const hostPlusDisabled = !available || isHostPlus;
 
   return (
@@ -196,7 +189,10 @@ export default function UpgradeScreen() {
           <View style={{ gap: 10 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
               <Feather name="gift" size={18} color={colors.primary} />
-              <Body>Apply your Event Pro unlock to "{event.title}".</Body>
+              <Body>
+                Apply one of your {unclaimedCount} unused Event Pro unlock
+                {unclaimedCount === 1 ? "" : "s"} to "{event.title}".
+              </Body>
             </View>
             <Button
               label="Apply unlock"
@@ -210,41 +206,57 @@ export default function UpgradeScreen() {
         </Card>
       )}
 
-      {event && (
-        <PlanCard
-          colors={colors}
-          tone="event"
-          title={PLAN_META.event_pro.title}
-          price={priceFor("event_pro")}
-          subtitle={`Unlock everything for "${event.title}" — slider, full guest list, photo gallery, custom templates.`}
-          features={[
-            "Unlimited guests",
-            "Photo gallery + slider",
-            "Custom templates & filters",
-            "CSV export",
-          ]}
-          ctaLabel={
-            eventLocallyUnlocked
+      <PlanCard
+        colors={colors}
+        tone="event"
+        title={PLAN_META.event_pro.title}
+        price={priceFor("event_pro")}
+        subtitle={
+          event
+            ? `Unlock everything for "${event.title}" — slider, full guest list, photo gallery, custom templates.`
+            : "Unlock one event end-to-end. Open an event and tap Upgrade to apply the unlock."
+        }
+        features={[
+          "Unlimited guests",
+          "Photo gallery + slider",
+          "Custom templates & filters",
+          "CSV export",
+        ]}
+        ctaLabel={
+          !hasLivePackage("event_pro")
+            ? "Loading…"
+            : eventLocallyUnlocked
               ? "Already unlocked"
               : isHostPlus
                 ? "Included with Host Plus"
                 : canClaimForEvent
                   ? "Use existing unlock"
-                  : "Unlock this event"
+                  : !event
+                    ? "Open an event to unlock"
+                    : "Unlock this event"
+        }
+        tag="One-time"
+        disabled={
+          eventProDisabled ||
+          eventLocallyUnlocked ||
+          (!event && !canClaimForEvent) ||
+          !hasLivePackage("event_pro")
+        }
+        loading={isPending("event_pro")}
+        onPress={() => {
+          if (canClaimForEvent && event) {
+            unlockEvent(event.id);
+            router.back();
+            return;
           }
-          tag="One-time"
-          disabled={eventProDisabled || eventLocallyUnlocked}
-          loading={isPending("event_pro")}
-          onPress={() => {
-            if (canClaimForEvent && event) {
-              unlockEvent(event.id);
-              router.back();
-              return;
-            }
-            handleBuy("event_pro");
-          }}
-        />
-      )}
+          if (!event) {
+            router.replace("/(tabs)");
+            return;
+          }
+          handleBuy("event_pro");
+        }}
+      />
+
 
       <View style={{ gap: 6, marginTop: 8 }}>
         <H2>Host Plus</H2>
@@ -264,8 +276,14 @@ export default function UpgradeScreen() {
           "Priority reminders",
         ]}
         tag="Best value"
-        ctaLabel={isHostPlus ? "Current plan" : "Go yearly"}
-        disabled={hostPlusDisabled}
+        ctaLabel={
+          !hasLivePackage("host_plus_yearly")
+            ? "Loading…"
+            : isHostPlus
+              ? "Current plan"
+              : "Go yearly"
+        }
+        disabled={hostPlusDisabled || !hasLivePackage("host_plus_yearly")}
         loading={isPending("host_plus_yearly")}
         onPress={() => handleBuy("host_plus_yearly")}
       />
@@ -277,8 +295,14 @@ export default function UpgradeScreen() {
         price={priceFor("host_plus_monthly")}
         subtitle="Flexible monthly billing."
         features={["Unlimited events & guests", "All premium features"]}
-        ctaLabel={isHostPlus ? "Current plan" : "Go monthly"}
-        disabled={hostPlusDisabled}
+        ctaLabel={
+          !hasLivePackage("host_plus_monthly")
+            ? "Loading…"
+            : isHostPlus
+              ? "Current plan"
+              : "Go monthly"
+        }
+        disabled={hostPlusDisabled || !hasLivePackage("host_plus_monthly")}
         loading={isPending("host_plus_monthly")}
         onPress={() => handleBuy("host_plus_monthly")}
       />
@@ -333,7 +357,8 @@ function PlanCard({
 }: {
   colors: ReturnType<typeof useColors>;
   title: string;
-  price: string;
+  /** Live store price string, or undefined while pricing is loading. */
+  price: string | undefined;
   subtitle: string;
   features: string[];
   ctaLabel: string;
@@ -371,13 +396,13 @@ function PlanCard({
       </View>
       <Text
         style={{
-          color: colors.foreground,
+          color: price ? colors.foreground : colors.mutedForeground,
           fontFamily: "Inter_700Bold",
           fontSize: 26,
           letterSpacing: -0.5,
         }}
       >
-        {price}
+        {price ?? "—"}
       </Text>
       <Body muted>{subtitle}</Body>
       <View style={{ gap: 6 }}>

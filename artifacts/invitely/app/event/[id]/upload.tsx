@@ -9,6 +9,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Field } from "@/components/Field";
 import { Body, Button, Card, EmptyState, Pill, Section } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { usePlan } from "@/lib/gating";
 import { relativeTime } from "@/lib/format";
 import { useInviteStore } from "@/store/InviteStore";
 
@@ -18,6 +19,15 @@ export default function UploadScreen() {
   const router = useRouter();
   const { state, addUpload, removeUpload } = useInviteStore();
   const event = state.events.find((e) => e.id === id);
+  const plan = usePlan();
+  const unlocked = id ? plan.isEventUnlocked(id) : false;
+
+  // Guest photo uploads are a premium feature — block deep-link bypass.
+  React.useEffect(() => {
+    if (event && !unlocked) {
+      router.replace(`/upgrade?eventId=${event.id}`);
+    }
+  }, [event, unlocked, router]);
 
   const [picked, setPicked] = useState<{ uri: string; w?: number; h?: number } | null>(null);
   const [caption, setCaption] = useState("");

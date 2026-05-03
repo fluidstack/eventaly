@@ -21,6 +21,26 @@ export const PACKAGE_EVENT_PRO = "event_pro";
 export const PACKAGE_HOST_PLUS_MONTHLY = "$rc_monthly";
 export const PACKAGE_HOST_PLUS_YEARLY = "$rc_annual";
 
+/**
+ * Subscriber attribute key we set when purchasing Event Pro so the chosen
+ * event id is durably attached to the purchase on RevenueCat's side. This is
+ * the source of truth for restoring per-event unlocks on a fresh install.
+ */
+export const ATTR_EVENT_PRO_LAST_EVENT = "$invitelyEventProLastEventId";
+
+/**
+ * Returns the number of times the user has purchased the Event Pro
+ * non-subscription product. Each purchase represents one event unlock and
+ * appears as a separate entry in `customerInfo.nonSubscriptionTransactions`.
+ */
+export function getEventProPurchaseCount(info: CustomerInfo | undefined): number {
+  if (!info) return 0;
+  const txns = info.nonSubscriptionTransactions ?? [];
+  return txns.filter((t) =>
+    (t.productIdentifier ?? "").toLowerCase().includes("event_pro"),
+  ).length;
+}
+
 function getRevenueCatApiKey(): string | undefined {
   // The web build can't purchase via App/Play Store and our keys are mobile-only,
   // so skip configuration entirely on web. The app still renders an "available
@@ -83,10 +103,15 @@ export type SubscriptionContextValue = {
   currentOffering: PurchasesOffering | null | undefined;
   isHostPlus: boolean;
   hasEventProEntitlement: boolean;
+  /** Total Event Pro purchases recorded by RevenueCat for this user. */
+  eventProPurchaseCount: number;
   isLoading: boolean;
   isPurchasing: boolean;
   isRestoring: boolean;
-  purchase: (pkg: PurchasesPackage) => Promise<CustomerInfo | undefined>;
+  purchase: (
+    pkg: PurchasesPackage,
+    opts?: { eventId?: string },
+  ) => Promise<CustomerInfo | undefined>;
   restore: () => Promise<CustomerInfo | undefined>;
   refresh: () => Promise<void>;
 };
@@ -112,7 +137,23 @@ function useSubscriptionContext(): SubscriptionContextValue {
   });
 
   const purchaseMutation = useMutation({
-    mutationFn: async (pkg: PurchasesPackage) => {
+    mutationFn: async ({
+      pkg,
+      eventId,
+    }: {
+      pkg: PurchasesPackage;
+      eventId?: string;
+    }) => {
+      // Persist event-id mapping on the RC subscriber profile BEFORE the
+      // purchase so it's durably attached to this purchaser. The latest
+      // purchased event id can then be recovered on a fresh install.
+      if (eventId) {
+        try {
+          await Purchases.setAttributes({ [ATTR_EVENT_PRO_LAST_EVENT]: eventId });
+        } catch {
+          // ignore in mocked envs
+        }
+      }
       const result = await Purchases.purchasePackage(pkg);
       return result.customerInfo;
     },
@@ -141,10 +182,11 @@ function useSubscriptionContext(): SubscriptionContextValue {
       currentOffering: offeringsQuery.data?.current,
       isHostPlus,
       hasEventProEntitlement,
+      eventProPurchaseCount: getEventProPurchaseCount(info),
       isLoading: customerInfoQuery.isLoading || offeringsQuery.isLoading,
       isPurchasing: purchaseMutation.isPending,
       isRestoring: restoreMutation.isPending,
-      purchase: purchaseMutation.mutateAsync,
+      purchase: (pkg, opts) => purchaseMutation.mutateAsync({ pkg, eventId: opts?.eventId }),
       restore: restoreMutation.mutateAsync,
       refresh: async () => {
         await Promise.all([

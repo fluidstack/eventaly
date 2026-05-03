@@ -8,6 +8,7 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { Screen } from "@/components/Screen";
 import { Body, Button, Card, EmptyState, Pill, Section } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { usePlan } from "@/lib/gating";
 import { relativeTime } from "@/lib/format";
 import { useInviteStore } from "@/store/InviteStore";
 import { Upload, UploadStatus } from "@/store/types";
@@ -25,6 +26,15 @@ export default function ModerationQueue() {
   const router = useRouter();
   const { state, setUploadStatus, addUpload } = useInviteStore();
   const event = state.events.find((e) => e.id === id);
+  const plan = usePlan();
+  const unlocked = id ? plan.isEventUnlocked(id) : false;
+
+  // Hard-gate the moderation queue — premium-only feature, deep links blocked.
+  React.useEffect(() => {
+    if (event && !unlocked) {
+      router.replace(`/upgrade?eventId=${event.id}`);
+    }
+  }, [event, unlocked, router]);
 
   const [filter, setFilter] = useState<UploadStatus | "all">("pending");
 

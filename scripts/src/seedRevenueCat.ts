@@ -38,7 +38,14 @@ type Plan = {
   playStoreProductId: string;
   displayName: string;
   title: string;
-  duration: Duration;
+  /** Auto-renewing subscription duration. Required for type "subscription". */
+  duration?: Duration;
+  /**
+   * RevenueCat product type. Event Pro is a one-shot, repeatable purchase
+   * (one event unlock per buy) — must be "consumable" so each transaction
+   * lands in `nonSubscriptionTransactions` for our consumable counting model.
+   */
+  productType: "subscription" | "consumable";
   entitlement: string;
   packageIdentifier: string;
   packageDisplayName: string;
@@ -49,11 +56,12 @@ const ENTITLEMENT_EVENT_PRO = "event_pro";
 
 const PLANS: Plan[] = [
   {
+    // Event Pro is a one-time, repeatable purchase (no ":basePlan" suffix on Play).
     productId: "invitely_event_pro",
-    playStoreProductId: "invitely_event_pro:monthly",
+    playStoreProductId: "invitely_event_pro",
     displayName: "Event Pro",
     title: "Event Pro",
-    duration: "P1M",
+    productType: "consumable",
     entitlement: ENTITLEMENT_EVENT_PRO,
     packageIdentifier: "event_pro",
     packageDisplayName: "Event Pro — one event",
@@ -63,6 +71,7 @@ const PLANS: Plan[] = [
     playStoreProductId: "invitely_host_plus_monthly:monthly",
     displayName: "Host Plus Monthly",
     title: "Host Plus Monthly",
+    productType: "subscription",
     duration: "P1M",
     entitlement: ENTITLEMENT_HOST_PLUS,
     packageIdentifier: "$rc_monthly",
@@ -73,12 +82,25 @@ const PLANS: Plan[] = [
     playStoreProductId: "invitely_host_plus_yearly:yearly",
     displayName: "Host Plus Yearly",
     title: "Host Plus Yearly",
+    productType: "subscription",
     duration: "P1Y",
     entitlement: ENTITLEMENT_HOST_PLUS,
     packageIdentifier: "$rc_annual",
     packageDisplayName: "Host Plus — Yearly",
   },
 ];
+
+// Guardrail: the in-app consumable model in lib/gating.ts depends on Event Pro
+// being a non-subscription product so each purchase shows up in
+// nonSubscriptionTransactions. Fail loudly if anyone reverts that.
+for (const plan of PLANS) {
+  if (plan.entitlement === ENTITLEMENT_EVENT_PRO && plan.productType !== "consumable") {
+    throw new Error(
+      `Event Pro must be configured as a "consumable" product (got "${plan.productType}"). ` +
+        "Subscription-typed Event Pro breaks per-event unlock counting in the app.",
+    );
+  }
+}
 
 const OFFERING_IDENTIFIER = "default";
 const OFFERING_DISPLAY_NAME = "Invitely Plans";
@@ -153,14 +175,26 @@ async function ensureProduct(
     (p) => p.store_identifier === storeId && p.app_id === app.id,
   );
   if (found) {
+    if (found.type !== plan.productType) {
+      // Existing seed used a different product type. Fail loudly so the
+      // operator archives + re-creates with the correct type rather than
+      // silently leaving Event Pro as a subscription.
+      throw new Error(
+        `Product ${storeId} on ${app.type} exists with type "${found.type}" but plan expects "${plan.productType}". ` +
+          "Archive the product in RevenueCat and re-run seed.",
+      );
+    }
     console.log(`Product ${storeId} on ${app.type} exists:`, found.id);
     return found;
   }
   const body: CreateProductData["body"] = {
     store_identifier: storeId,
     app_id: app.id,
-    type: "subscription",
+    type: plan.productType,
     display_name: plan.displayName,
+    ...(plan.productType === "subscription" && plan.duration
+      ? { subscription: { duration: plan.duration } }
+      : {}),
   };
   const { data, error } = await createProduct({
     client,

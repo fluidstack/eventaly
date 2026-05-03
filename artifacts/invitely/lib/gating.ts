@@ -32,21 +32,30 @@ export type PlanState = {
 
 export function usePlan(): PlanState {
   const { state } = useInviteStore();
-  const { isHostPlus, hasEventProEntitlement } = useSubscription();
+  const { isHostPlus, eventProPurchaseCount } = useSubscription();
   const unlockedEventIds = state.profile.unlockedEventIds ?? [];
 
   return useMemo<PlanState>(() => {
     const isEventUnlocked = (eventId: string) =>
       isHostPlus || unlockedEventIds.includes(eventId);
 
-    const hasUnclaimedEventPro =
-      hasEventProEntitlement && !isHostPlus && unlockedEventIds.length === 0;
+    // Each Event Pro purchase = exactly one event unlock. Compare lifetime
+    // purchase count against locally claimed unlocks; remaining = unclaimed.
+    const unclaimedCount = Math.max(
+      0,
+      eventProPurchaseCount - unlockedEventIds.length,
+    );
+    const hasUnclaimedEventPro = !isHostPlus && unclaimedCount > 0;
 
-    const eventCount = state.events.length;
+    // Free tier caps "active" events — past events don't count against quota.
+    const now = Date.now();
+    const activeEventCount = state.events.filter(
+      (e) => new Date(e.startISO).getTime() >= now,
+    ).length;
     const remainingFreeEvents = isHostPlus
       ? Number.POSITIVE_INFINITY
-      : Math.max(0, FREE_LIMITS.events - eventCount);
-    const canCreateEvent = isHostPlus || eventCount < FREE_LIMITS.events;
+      : Math.max(0, FREE_LIMITS.events - activeEventCount);
+    const canCreateEvent = isHostPlus || activeEventCount < FREE_LIMITS.events;
 
     const remainingGuests = (currentCount: number) => {
       if (isHostPlus) return Number.POSITIVE_INFINITY;
@@ -70,8 +79,8 @@ export function usePlan(): PlanState {
     };
   }, [
     isHostPlus,
-    hasEventProEntitlement,
+    eventProPurchaseCount,
     unlockedEventIds,
-    state.events.length,
+    state.events,
   ]);
 }
