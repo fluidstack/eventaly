@@ -136,8 +136,15 @@ export default function UpgradeScreen() {
         existingClaims: state.profile.eventProClaims ?? [],
       });
       const meta = PLAN_META[key];
-      const grantedEventPro = Boolean(info?.entitlements?.active?.event_pro);
       const grantedHostPlus = Boolean(info?.entitlements?.active?.host_plus);
+      // Event Pro is a CONSUMABLE product (per task spec: "$12 consumable
+      // per-event"). Consumables do NOT light up an active entitlement —
+      // they show up purely as a new entry in nonSubscriptionTransactions.
+      // So we must unlock based on the transaction-delta signal
+      // (newTransactionId returned by purchase()), not on
+      // info.entitlements.active.event_pro.
+      const grantedEventPro =
+        meta.entitlement === "event_pro" && Boolean(newTransactionId);
       if (meta.entitlement === "event_pro" && grantedEventPro && eventId) {
         unlockEvent(eventId, newTransactionId);
       }

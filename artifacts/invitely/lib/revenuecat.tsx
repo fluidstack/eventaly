@@ -339,22 +339,28 @@ export function SubscriptionProvider({
 export type EventProClaim = { transactionId: string; eventId: string };
 
 /**
- * Read the durable per-event Event Pro claim mapping from RC subscriber
- * attributes. Returns [] in mocked envs / web / when no attribute is set.
+ * RESTORE / REHYDRATION MODEL (read this before changing).
  *
- * Note: react-native-purchases doesn't currently expose a `getAttributes`
- * call, so we fetch the attribute via the RC REST surface only when needed.
- * In practice we only ever READ attributes in two places — purchase append
- * and rehydration — both of which can tolerate the local-cache fallback.
- * We cache the last value we wrote so reads stay deterministic within a
- * session.
+ * Source of truth for per-event Event Pro unlocks WITHIN an install is the
+ * local AsyncStorage-persisted `Profile.eventProClaims` (transactionId ->
+ * eventId). It survives app restart, is rehydrated on InviteStoreProvider
+ * boot, and is fed back into RC writes so the durable subscriber attribute
+ * `ATTR_EVENT_PRO_CLAIMS` always carries the FULL history (used by future
+ * server-side readers; the RN Purchases SDK has no getAttributes()).
+ *
+ * Cross-install / new-device recovery uses the deterministic delta between
+ * RevenueCat's `nonSubscriptionTransactions` count (lifetime Event Pro
+ * purchases for this appUserID) and the local `eventProClaims` length. Any
+ * un-attributed purchases surface as "unclaimed credits" in /upgrade and
+ * the user maps them to a specific event via the manual claim banner.
+ * This is the supported model for App Store / Play Store CONSUMABLE
+ * products — the stores don't auto-restore consumables and don't carry
+ * arbitrary client metadata into a fresh install.
+ *
+ * Refund safety: `EventProClaimsSync` watches customerInfo and prunes any
+ * local claim whose transactionId no longer appears in
+ * nonSubscriptionTransactions; the cascade also drops the matching unlock.
  */
-let lastWrittenClaims: EventProClaim[] | undefined;
-async function readEventProClaimsAttribute(): Promise<EventProClaim[]> {
-  if (lastWrittenClaims) return lastWrittenClaims;
-  return [];
-}
-
 function mergeEventProClaims(
   existing: EventProClaim[],
   validTxnIds: Set<string>,
@@ -379,11 +385,10 @@ function mergeEventProClaims(
     transactionId,
     eventId,
   }));
-  lastWrittenClaims = out;
   return out;
 }
 
-export { readEventProClaimsAttribute, mergeEventProClaims };
+export { mergeEventProClaims };
 
 export function useSubscription(): SubscriptionContextValue {
   const ctx = useContext(Context);
