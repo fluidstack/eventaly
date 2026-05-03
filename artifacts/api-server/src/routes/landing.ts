@@ -115,7 +115,10 @@ router.get(
       return;
     }
 
-    const accent = ev.customAccent || "#6366F1";
+    const rawAccent = ev.customAccent || "";
+    const accent = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(rawAccent)
+      ? rawAccent
+      : "#6366F1";
     const title = ev.customName?.trim() || ev.title;
     const tagline = ev.customTagline?.trim() || "";
     const host = ev.hostName?.trim() || "your host";
@@ -191,6 +194,11 @@ ${ev.heroPhotoUri ? `<meta property="og:image" content="${escapeHtml(ev.heroPhot
     background: #fff; color: #0B0B12; text-decoration: none; font-weight: 600; font-size: 14px;
   }
   .stores a.android { background: #16161F; color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+  .open-app {
+    display: block; text-align: center; padding: 14px; border-radius: 12px;
+    background: ${accent}; color: #fff; text-decoration: none; font-weight: 700;
+    font-size: 15px; margin-bottom: 12px;
+  }
   .success {
     margin: 18px 16px; padding: 22px; background: ${accent}1a; border: 1px solid ${accent}66;
     border-radius: 16px; text-align: center;
@@ -257,7 +265,10 @@ ${ev.heroPhotoUri ? `<meta property="og:image" content="${escapeHtml(ev.heroPhot
 
 <div class="install">
   <h3>Get the Invitely app</h3>
-  <p>Open this invite in the app to RSVP, see updates and add to your calendar.</p>
+  <p>Open this invite in Invitely to RSVP, see updates and add to your calendar.</p>
+  <a class="open-app" href="invitely://e/${escapeHtml(ev.id)}${
+      ev.privacy === "invite-only" && token ? `?t=${escapeHtml(token)}` : ""
+    }">Open in Invitely</a>
   <div class="stores">
     <a href="${escapeHtml(APP_STORE_URL)}">App Store</a>
     <a class="android" href="${escapeHtml(PLAY_STORE_URL)}">Google Play</a>

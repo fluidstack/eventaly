@@ -17,7 +17,11 @@ const PublishEventSchema = z.object({
   heroFilter: z.string().max(64).optional().nullable(),
   customName: z.string().max(120).optional().nullable(),
   customTagline: z.string().max(200).optional().nullable(),
-  customAccent: z.string().max(32).optional().nullable(),
+  customAccent: z
+    .string()
+    .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "must be #RGB or #RRGGBB hex")
+    .optional()
+    .nullable(),
   message: z.string().max(4000).optional().default(""),
   startISO: z.string().min(1).max(64),
   location: z.string().max(500).optional().default(""),
@@ -173,9 +177,7 @@ router.get(
  * the landing page hydrates from). For invite-only events the client must
  * pass `?t=<inviteToken>`.
  */
-router.get(
-  "/events/:id/public",
-  asyncHandler(async (req, res) => {
+const publicEventHandler = asyncHandler(async (req, res) => {
     const id = String(req.params.id);
     const ev = await db
       .select()
@@ -204,8 +206,9 @@ router.get(
       privacy: row.privacy,
       hostName: row.hostName,
     });
-  }),
-);
+  });
+router.get("/events/:id/public", publicEventHandler);
+router.get("/events/:id", publicEventHandler);
 
 /**
  * Public: submit an RSVP from the web landing page.
