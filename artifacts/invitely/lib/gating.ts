@@ -49,8 +49,10 @@ export function usePlan(): PlanState {
 
     // Free tier caps "active" events — past events don't count against quota.
     const now = Date.now();
+    // Sample/demo events are excluded from the free quota so new users can
+    // still create their own first event.
     const activeEventCount = state.events.filter(
-      (e) => new Date(e.startISO).getTime() >= now,
+      (e) => !e.isSample && new Date(e.startISO).getTime() >= now,
     ).length;
     const remainingFreeEvents = isHostPlus
       ? Number.POSITIVE_INFINITY

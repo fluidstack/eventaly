@@ -68,6 +68,11 @@ export type Event = {
   invited: InvitedGuest[];
   slider: Slider;
   createdAt: string;
+  /**
+   * Demo events seeded for new installs. Excluded from the free-tier active
+   * event quota so a new user can still create their own first event.
+   */
+  isSample?: boolean;
 };
 
 export type AppNotification = {

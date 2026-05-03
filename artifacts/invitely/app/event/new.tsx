@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
@@ -29,17 +29,30 @@ import { useInviteStore } from "@/store/InviteStore";
 export default function NewEventScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { state, createEvent } = useInviteStore();
+  const { state, ready, createEvent } = useInviteStore();
   const plan = usePlan();
   const defaultTemplate = state.profile.defaultTemplate;
 
   // Hard-block direct entry to /event/new when the free quota is used.
   // The home tab also gates the entry point, but routes can be hit directly.
+  //
+  // Two subtleties this handles:
+  //   1) The store hydrates from AsyncStorage asynchronously. We must wait
+  //      until `ready` to read canCreateEvent, otherwise an over-quota user
+  //      sees the seed defaults and can bypass the gate on cold start.
+  //   2) Once we've seen a ready snapshot that allows creation, we lock that
+  //      verdict in — otherwise calling createEvent will flip canCreateEvent
+  //      to false and the effect would race the post-create navigation,
+  //      bouncing the user to /upgrade before /event/[id] can land.
+  const gateLockedRef = useRef(false);
   useEffect(() => {
+    if (gateLockedRef.current) return;
+    if (!ready) return;
+    gateLockedRef.current = true;
     if (!plan.canCreateEvent) {
       router.replace("/upgrade?tier=host_plus");
     }
-  }, [plan.canCreateEvent, router]);
+  }, [ready, plan.canCreateEvent, router]);
 
   const [title, setTitle] = useState("");
   const [templateId, setTemplateId] = useState<TemplateId>(defaultTemplate);
@@ -95,6 +108,14 @@ export default function NewEventScreen() {
   const canCreate = title.trim().length > 0 && date.length === 10;
 
   const onCreate = () => {
+    // Submit-time quota enforcement. The on-mount gate above intentionally
+    // ignores quota changes after first render to avoid racing the post-
+    // create navigation; this catches stale-state, deep-link, or hydration-
+    // edge bypasses where the screen rendered while still over quota.
+    if (!plan.canCreateEvent) {
+      router.replace("/upgrade?tier=host_plus");
+      return;
+    }
     // Re-validate template gating at submit. The picker also blocks paid
     // templates, but `templateId` is seeded from `defaultTemplate` which a
     // legacy/imported profile could carry as a premium id — never let a free

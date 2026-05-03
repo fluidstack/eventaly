@@ -91,6 +91,7 @@ function seedState(): AppState {
     invited: [],
     slider: { published: false, preset: "fade", orderedUploadIds: [] },
     createdAt: new Date(now.getTime() - 86400000 * 4).toISOString(),
+    isSample: true,
   };
 
   const notifications: AppNotification[] = [

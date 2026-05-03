@@ -37,6 +37,8 @@ export const PREMIUM_TEMPLATE_IDS: TemplateId[] = [
   "christmas",
   "newyear",
   "christening",
+  "bucks",
+  "hens",
 ];
 
 export function isPremiumTemplate(id: TemplateId | string | undefined): boolean {
@@ -158,6 +160,7 @@ export const TEMPLATES: Template[] = [
     name: "Bucks",
     tagline: "One last ride before the ring",
     accent: "#1E3A8A",
+    premium: true,
     image: require("../assets/images/template-bucks.png"),
     copyHints: [
       "He's getting hitched — let's send him off properly. You in?",
@@ -170,6 +173,7 @@ export const TEMPLATES: Template[] = [
     name: "Hens",
     tagline: "Bubbles, besties & big energy",
     accent: "#EC4899",
+    premium: true,
     image: require("../assets/images/template-hens.png"),
     copyHints: [
       "She said yes — now we say cheers. Hens weekend, all the energy.",
