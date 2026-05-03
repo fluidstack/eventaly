@@ -77,6 +77,14 @@ export default function NewEventScreen() {
   const canCreate = title.trim().length > 0 && date.length === 10;
 
   const onCreate = () => {
+    // Re-validate template gating at submit. The picker also blocks paid
+    // templates, but `templateId` is seeded from `defaultTemplate` which a
+    // legacy/imported profile could carry as a premium id — never let a free
+    // user actually create an event on a paid template.
+    if (isPremiumTemplate(templateId) && !plan.isHostPlus) {
+      router.push("/upgrade");
+      return;
+    }
     const ev = createEvent({
       title: title.trim(),
       templateId,

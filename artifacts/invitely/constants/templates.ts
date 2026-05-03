@@ -20,10 +20,18 @@ export type Template = {
   premium?: boolean;
 };
 
+/**
+ * Free tier ships with exactly 2 templates (Birthday, Wedding). Everything
+ * else is premium and requires Event Pro (per event) or Host Plus.
+ */
+export const FREE_TEMPLATE_IDS: TemplateId[] = ["birthday", "wedding"];
+
 export const PREMIUM_TEMPLATE_IDS: TemplateId[] = [
-  "christening",
+  "dinner",
+  "baby",
   "christmas",
   "newyear",
+  "christening",
 ];
 
 export function isPremiumTemplate(id: TemplateId | string | undefined): boolean {
@@ -61,6 +69,7 @@ export const TEMPLATES: Template[] = [
     tagline: "Long table, longer stories",
     accent: "#F59E0B",
     image: require("../assets/images/template-dinner.png"),
+    premium: true,
     copyHints: [
       "Friends, food, and far too much wine. Come hungry.",
       "I'm cooking. You're eating. Bring an appetite and a story.",
@@ -73,6 +82,7 @@ export const TEMPLATES: Template[] = [
     tagline: "Tiny socks & sweet wishes",
     accent: "#14B8A6",
     image: require("../assets/images/template-baby.png"),
+    premium: true,
     copyHints: [
       "A little someone is on the way — come shower us with love.",
       "Small feet, big plans. Join us to celebrate the new arrival.",

@@ -9,6 +9,7 @@ import { Body, Button, Card, H1, Pill, Section } from "@/components/ui";
 import { TEMPLATES } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { initials } from "@/lib/format";
+import { usePlan } from "@/lib/gating";
 import { useSubscription } from "@/lib/revenuecat";
 import { useInviteStore } from "@/store/InviteStore";
 
@@ -18,6 +19,7 @@ export default function SettingsScreen() {
   const { state, updateProfile, resetData } = useInviteStore();
   const { isHostPlus, hasEventProEntitlement, isRestoring, restore, available } =
     useSubscription();
+  const plan = usePlan();
   const [name, setName] = useState(state.profile.name);
   const [email, setEmail] = useState(state.profile.email);
 
@@ -137,10 +139,20 @@ export default function SettingsScreen() {
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {TEMPLATES.map((t) => {
             const active = state.profile.defaultTemplate === t.id;
+            const locked = !!t.premium && !plan.isHostPlus;
             return (
               <Pressable
                 key={t.id}
-                onPress={() => updateProfile({ defaultTemplate: t.id })}
+                onPress={() => {
+                  // Hard-gate premium templates so a free user can never set
+                  // a paid template as their default and bypass the new-event
+                  // template picker check.
+                  if (locked) {
+                    router.push("/upgrade");
+                    return;
+                  }
+                  updateProfile({ defaultTemplate: t.id });
+                }}
                 style={({ pressed }) => ({
                   paddingVertical: 10,
                   paddingHorizontal: 14,

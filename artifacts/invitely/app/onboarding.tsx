@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Field } from "@/components/Field";
 import { Body, Button, H1, H2 } from "@/components/ui";
-import { TEMPLATES, TemplateId } from "@/constants/templates";
+import { TEMPLATES, TemplateId, isPremiumTemplate } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { useInviteStore } from "@/store/InviteStore";
 
@@ -22,8 +22,14 @@ export default function OnboardingScreen() {
   const [template, setTemplate] = useState<TemplateId>(state.profile.defaultTemplate);
 
   const finish = () => {
+    // Onboarding always lands a free user, so block premium template
+    // selection from leaking into defaultTemplate. Falls back to "birthday"
+    // (a free template) if a premium id was somehow chosen.
+    const safeTemplate: TemplateId = isPremiumTemplate(template)
+      ? "birthday"
+      : template;
     completeOnboarding(name.trim() || "Friend", email.trim());
-    updateProfile({ defaultTemplate: template });
+    updateProfile({ defaultTemplate: safeTemplate });
     router.replace("/");
   };
 
@@ -142,7 +148,7 @@ export default function OnboardingScreen() {
                 </Body>
               </View>
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                {TEMPLATES.map((t) => {
+                {TEMPLATES.filter((t) => !t.premium).map((t) => {
                   const active = template === t.id;
                   return (
                     <Pressable
