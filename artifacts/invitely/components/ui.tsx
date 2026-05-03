@@ -151,10 +151,10 @@ export function Pill({
   const colors = useColors();
   const tones: Record<PillTone, { bg: string; fg: string }> = {
     neutral: { bg: colors.muted, fg: colors.foreground },
-    yes: { bg: "#D1FAE5", fg: "#065F46" },
-    no: { bg: "#FEE2E2", fg: "#991B1B" },
-    maybe: { bg: "#FEF3C7", fg: "#92400E" },
-    warn: { bg: "#FEF3C7", fg: "#92400E" },
+    yes: { bg: colors.successMuted, fg: colors.successMutedForeground },
+    no: { bg: colors.destructiveMuted, fg: colors.destructiveMutedForeground },
+    maybe: { bg: colors.warningMuted, fg: colors.warningMutedForeground },
+    warn: { bg: colors.warningMuted, fg: colors.warningMutedForeground },
     primary: { bg: colors.secondary, fg: colors.primary },
   };
   const t = tones[tone];

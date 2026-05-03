@@ -4,9 +4,11 @@ import colors from "@/constants/colors";
 
 export function useColors() {
   const scheme = useColorScheme();
-  const palette =
-    scheme === "dark" && "dark" in colors
-      ? (colors as Record<string, typeof colors.light>).dark
-      : colors.light;
-  return { ...palette, radius: colors.radius };
+  const isDark = scheme === "dark";
+  const palette = isDark ? colors.dark : colors.light;
+  return {
+    ...palette,
+    radius: colors.radius,
+    scheme: (isDark ? "dark" : "light") as "dark" | "light",
+  };
 }

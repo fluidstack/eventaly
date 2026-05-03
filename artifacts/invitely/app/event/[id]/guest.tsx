@@ -132,12 +132,12 @@ export default function GuestViewScreen() {
                   width: 56,
                   height: 56,
                   borderRadius: 28,
-                  backgroundColor: "#D1FAE5",
+                  backgroundColor: colors.successMuted,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Feather name="check" size={28} color="#065F46" />
+                <Feather name="check" size={28} color={colors.successMutedForeground} />
               </View>
               <H2>You're {status === "yes" ? "in" : status === "maybe" ? "a maybe" : "out"}.</H2>
               <Body muted style={{ textAlign: "center" }}>

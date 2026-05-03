@@ -66,7 +66,7 @@ export default function HomeScreen() {
       <Pressable
         onPress={() => router.push("/event/new")}
         style={({ pressed }) => ({
-          backgroundColor: colors.foreground,
+          backgroundColor: colors.inverseSurface,
           borderRadius: 18,
           padding: 18,
           flexDirection: "row",
@@ -90,7 +90,7 @@ export default function HomeScreen() {
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              color: "#fff",
+              color: colors.inverseSurfaceForeground,
               fontSize: 16,
               fontFamily: "Inter_600SemiBold",
               letterSpacing: -0.3,
@@ -100,7 +100,8 @@ export default function HomeScreen() {
           </Text>
           <Text
             style={{
-              color: "rgba(255,255,255,0.7)",
+              color: colors.inverseSurfaceForeground,
+              opacity: 0.7,
               fontSize: 13,
               marginTop: 2,
               fontFamily: "Inter_400Regular",
@@ -109,7 +110,12 @@ export default function HomeScreen() {
             Pick a template, set the vibe, share in a tap.
           </Text>
         </View>
-        <Feather name="arrow-up-right" size={20} color="rgba(255,255,255,0.6)" />
+        <Feather
+          name="arrow-up-right"
+          size={20}
+          color={colors.inverseSurfaceForeground}
+          style={{ opacity: 0.6 }}
+        />
       </Pressable>
 
       {upcoming.length === 0 && past.length === 0 ? (
@@ -175,7 +181,8 @@ function StatBlock({
     >
       <Text
         style={{
-          color: accent ? "rgba(255,255,255,0.8)" : colors.mutedForeground,
+          color: accent ? colors.primaryForeground : colors.mutedForeground,
+          opacity: accent ? 0.8 : 1,
           fontSize: 11,
           fontFamily: "Inter_600SemiBold",
           letterSpacing: 0.6,
@@ -186,7 +193,7 @@ function StatBlock({
       </Text>
       <Text
         style={{
-          color: accent ? "#fff" : colors.foreground,
+          color: accent ? colors.primaryForeground : colors.foreground,
           fontSize: 26,
           marginTop: 4,
           fontFamily: "Inter_700Bold",

@@ -135,12 +135,12 @@ export default function SliderScreen() {
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: "#D1FAE5",
+                backgroundColor: colors.successMuted,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Feather name="check" size={18} color="#065F46" />
+              <Feather name="check" size={18} color={colors.successMutedForeground} />
             </View>
             <View style={{ flex: 1 }}>
               <Text
@@ -253,14 +253,14 @@ export default function SliderScreen() {
                       width: 28,
                       height: 28,
                       borderRadius: 14,
-                      backgroundColor: colors.foreground,
+                      backgroundColor: colors.primary,
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
                     <Text
                       style={{
-                        color: "#fff",
+                        color: colors.primaryForeground,
                         fontFamily: "Inter_700Bold",
                         fontSize: 12,
                       }}

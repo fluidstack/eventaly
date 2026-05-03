@@ -111,16 +111,16 @@ export default function UploadScreen() {
               flex: 1,
               padding: 22,
               borderRadius: 18,
-              backgroundColor: colors.foreground,
+              backgroundColor: colors.inverseSurface,
               alignItems: "center",
               gap: 10,
               opacity: pressed ? 0.9 : 1,
             })}
           >
-            <Feather name="camera" size={24} color={colors.primaryForeground} />
+            <Feather name="camera" size={24} color={colors.inverseSurfaceForeground} />
             <Text
               style={{
-                color: "#fff",
+                color: colors.inverseSurfaceForeground,
                 fontFamily: "Inter_600SemiBold",
                 fontSize: 14,
               }}

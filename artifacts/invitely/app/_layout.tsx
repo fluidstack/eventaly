@@ -15,6 +15,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useColors } from "@/hooks/useColors";
 import { InviteStoreProvider } from "@/store/InviteStore";
 
 SplashScreen.preventAutoHideAsync();
@@ -22,13 +23,16 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
+  const colors = useColors();
   return (
     <Stack
       screenOptions={{
         headerBackTitle: "Back",
-        headerTitleStyle: { fontFamily: "Inter_600SemiBold" },
+        headerTitleStyle: { fontFamily: "Inter_600SemiBold", color: colors.foreground },
         headerShadowVisible: false,
-        contentStyle: { backgroundColor: "#FAFAF7" },
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.foreground,
+        contentStyle: { backgroundColor: colors.background },
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -84,7 +88,7 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <InviteStoreProvider>
-                <StatusBar style="dark" />
+                <StatusBar style="auto" />
                 <RootLayoutNav />
               </InviteStoreProvider>
             </KeyboardProvider>
