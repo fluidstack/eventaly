@@ -8,6 +8,7 @@ import { EventCard } from "@/components/EventCard";
 import { Screen } from "@/components/Screen";
 import { Body, Button, EmptyState, H1, Section } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { FREE_LIMITS, usePlan } from "@/lib/gating";
 import { useInviteStore } from "@/store/InviteStore";
 
 export default function HomeScreen() {
@@ -15,6 +16,12 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, ready } = useInviteStore();
+  const plan = usePlan();
+
+  const onCreatePress = () => {
+    if (plan.canCreateEvent) router.push("/event/new");
+    else router.push("/upgrade");
+  };
 
   useEffect(() => {
     if (ready && !state.profile.onboarded) {
@@ -64,7 +71,7 @@ export default function HomeScreen() {
       </View>
 
       <Pressable
-        onPress={() => router.push("/event/new")}
+        onPress={onCreatePress}
         style={({ pressed }) => ({
           backgroundColor: colors.inverseSurface,
           borderRadius: 18,
@@ -96,7 +103,7 @@ export default function HomeScreen() {
               letterSpacing: -0.3,
             }}
           >
-            Start a new invite
+            {plan.canCreateEvent ? "Start a new invite" : "Upgrade to host more"}
           </Text>
           <Text
             style={{
@@ -107,7 +114,9 @@ export default function HomeScreen() {
               fontFamily: "Inter_400Regular",
             }}
           >
-            Pick a template, set the vibe, share in a tap.
+            {plan.canCreateEvent
+              ? "Pick a template, set the vibe, share in a tap."
+              : `Free plan covers ${FREE_LIMITS.events} active event. Tap to see plans.`}
           </Text>
         </View>
         <Feather
@@ -127,7 +136,7 @@ export default function HomeScreen() {
             <Button
               label="Create event"
               icon="plus"
-              onPress={() => router.push("/event/new")}
+              onPress={onCreatePress}
             />
           }
         />

@@ -16,6 +16,7 @@ import {
   formatTime,
   googleCalendarUrl,
 } from "@/lib/format";
+import { FREE_LIMITS, usePlan } from "@/lib/gating";
 import { getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
 import { RsvpStatus } from "@/store/types";
@@ -25,6 +26,7 @@ export default function GuestViewScreen() {
   const colors = useColors();
   const router = useRouter();
   const { state, upsertRsvp } = useInviteStore();
+  const plan = usePlan();
   const event = state.events.find((e) => e.id === id);
 
   const [name, setName] = useState("");
@@ -46,8 +48,15 @@ export default function GuestViewScreen() {
   const heroSource = event.heroPhotoUri ? { uri: event.heroPhotoUri } : template.image;
   const heroFilter = event.heroPhotoUri ? getHeroFilter(event.heroFilter) : getHeroFilter("none");
 
+  const isExistingGuest = event.rsvps.some(
+    (r) => r.guestName.trim().toLowerCase() === name.trim().toLowerCase(),
+  );
+  const guestCapReached =
+    !plan.canAddGuest(event.id, event.rsvps.length) && !isExistingGuest;
+
   const onSubmit = () => {
     if (!name.trim() || !status) return;
+    if (guestCapReached) return;
     upsertRsvp(event.id, {
       guestName: name.trim(),
       status,
@@ -273,13 +282,21 @@ export default function GuestViewScreen() {
               </View>
             </Card>
 
+            {guestCapReached && (
+              <Card>
+                <Body muted>
+                  This guest list is full ({FREE_LIMITS.guestsPerEvent} guests on
+                  the free plan). Ask the host to upgrade to add more guests.
+                </Body>
+              </Card>
+            )}
             <Button
-              label="Submit RSVP"
+              label={guestCapReached ? "Guest list full" : "Submit RSVP"}
               icon="send"
               size="lg"
               fullWidth
               onPress={onSubmit}
-              disabled={!status || !name.trim()}
+              disabled={!status || !name.trim() || guestCapReached}
             />
           </Section>
         )}

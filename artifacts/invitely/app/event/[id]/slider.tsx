@@ -16,6 +16,7 @@ import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native
 import { Screen } from "@/components/Screen";
 import { Body, Button, Card, EmptyState, Pill, Section } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { usePlan } from "@/lib/gating";
 import { useInviteStore } from "@/store/InviteStore";
 import { SliderPreset } from "@/store/types";
 
@@ -30,11 +31,14 @@ export default function SliderScreen() {
   const colors = useColors();
   const router = useRouter();
   const { state, updateSlider } = useInviteStore();
+  const plan = usePlan();
   const event = state.events.find((e) => e.id === id);
 
   const [playing, setPlaying] = useState(false);
 
   if (!event) return null;
+
+  const unlocked = plan.isEventUnlocked(event.id);
 
   const approved = event.uploads.filter((u) => u.status === "approved");
   const orderedIds =
@@ -63,6 +67,10 @@ export default function SliderScreen() {
   };
 
   const onPublish = () => {
+    if (!unlocked) {
+      router.push(`/upgrade?eventId=${event.id}`);
+      return;
+    }
     updateSlider(event.id, {
       published: true,
       orderedUploadIds: orderedIds,
@@ -118,14 +126,31 @@ export default function SliderScreen() {
           <Button label="Unpublish" icon="eye-off" variant="ghost" onPress={onUnpublish} />
         ) : (
           <Button
-            label="Publish"
+            label={unlocked ? "Publish" : "Unlock to publish"}
             variant="secondary"
-            icon="upload-cloud"
+            icon={unlocked ? "upload-cloud" : "lock"}
             disabled={ordered.length === 0}
             onPress={onPublish}
           />
         )}
       </View>
+
+      {!unlocked && (
+        <Card>
+          <View style={{ gap: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Pill label="Premium" tone="primary" />
+              <Body>Photo slider is part of Event Pro and Host Plus.</Body>
+            </View>
+            <Button
+              label="See plans"
+              icon="award"
+              size="sm"
+              onPress={() => router.push(`/upgrade?eventId=${event.id}`)}
+            />
+          </View>
+        </Card>
+      )}
 
       {event.slider.published && (
         <Card>

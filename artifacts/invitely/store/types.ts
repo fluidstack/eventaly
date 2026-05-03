@@ -73,6 +73,7 @@ export type Profile = {
   onboarded: boolean;
   language: string;
   billingPlan: "free" | "premium";
+  unlockedEventIds: string[];
 };
 
 export type AppState = {

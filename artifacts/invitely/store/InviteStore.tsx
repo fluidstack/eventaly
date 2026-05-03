@@ -29,6 +29,7 @@ const DEFAULT_PROFILE: Profile = {
   onboarded: false,
   language: "en",
   billingPlan: "free",
+  unlockedEventIds: [],
 };
 
 function seedState(): AppState {
@@ -151,6 +152,7 @@ type Ctx = {
   updateSlider: (eventId: string, patch: Partial<Slider>) => void;
   // profile
   updateProfile: (patch: Partial<Profile>) => void;
+  unlockEvent: (eventId: string) => void;
   completeOnboarding: (name: string, email: string) => void;
   // notifications
   markAllRead: () => void;
@@ -171,6 +173,9 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw && !cancelled) {
           const parsed = JSON.parse(raw) as AppState;
+          if (!parsed.profile.unlockedEventIds) {
+            parsed.profile.unlockedEventIds = [];
+          }
           setState(parsed);
         }
       } catch {
@@ -347,6 +352,19 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
       },
       updateProfile: (patch) => {
         setState((s) => ({ ...s, profile: { ...s.profile, ...patch } }));
+      },
+      unlockEvent: (eventId) => {
+        setState((s) => {
+          const existing = s.profile.unlockedEventIds ?? [];
+          if (existing.includes(eventId)) return s;
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              unlockedEventIds: [...existing, eventId],
+            },
+          };
+        });
       },
       completeOnboarding: (name, email) => {
         setState((s) => ({

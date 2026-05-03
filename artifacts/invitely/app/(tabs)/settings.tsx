@@ -9,14 +9,23 @@ import { Body, Button, Card, H1, Pill, Section } from "@/components/ui";
 import { TEMPLATES } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
 import { initials } from "@/lib/format";
+import { useSubscription } from "@/lib/revenuecat";
 import { useInviteStore } from "@/store/InviteStore";
 
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
   const { state, updateProfile, resetData } = useInviteStore();
+  const { isHostPlus, hasEventProEntitlement, isRestoring, restore, available } =
+    useSubscription();
   const [name, setName] = useState(state.profile.name);
   const [email, setEmail] = useState(state.profile.email);
+
+  const planLabel = isHostPlus
+    ? "Host Plus"
+    : hasEventProEntitlement || (state.profile.unlockedEventIds ?? []).length > 0
+      ? "Event Pro"
+      : "Free";
 
   const saveProfile = () => updateProfile({ name, email });
 
@@ -96,7 +105,7 @@ export default function SettingsScreen() {
               {state.profile.email || "no email yet"}
             </Text>
           </View>
-          <Pill label={state.profile.billingPlan} tone="primary" />
+          <Pill label={planLabel} tone="primary" />
         </View>
       </Card>
 
@@ -200,50 +209,68 @@ export default function SettingsScreen() {
 
       <Section title="Billing">
         <Card>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: colors.secondary,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Feather name="award" size={18} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
+          <View style={{ gap: 14 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View
                 style={{
-                  color: colors.foreground,
-                  fontFamily: "Inter_600SemiBold",
-                  fontSize: 15,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: colors.secondary,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {state.profile.billingPlan === "premium" ? "Premium" : "Free plan"}
-              </Text>
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontFamily: "Inter_400Regular",
-                  fontSize: 13,
-                  marginTop: 2,
-                }}
-              >
-                Unlock premium templates, custom domains, and unlimited photos.
-              </Text>
+                <Feather name="award" size={18} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 15,
+                  }}
+                >
+                  {isHostPlus ? "Host Plus" : "Free plan"}
+                </Text>
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontFamily: "Inter_400Regular",
+                    fontSize: 13,
+                    marginTop: 2,
+                  }}
+                >
+                  {isHostPlus
+                    ? "Unlimited events, every premium feature unlocked."
+                    : "Unlock unlimited events, photo slider, and full guest list."}
+                </Text>
+              </View>
+              <Button
+                label={isHostPlus ? "Manage" : "Upgrade"}
+                size="sm"
+                variant="secondary"
+                onPress={() => router.push("/upgrade")}
+              />
             </View>
             <Button
-              label={state.profile.billingPlan === "premium" ? "Manage" : "Upgrade"}
-              size="sm"
-              variant="secondary"
-              onPress={() =>
-                updateProfile({
-                  billingPlan:
-                    state.profile.billingPlan === "premium" ? "free" : "premium",
-                })
-              }
+              label="Restore purchases"
+              variant="ghost"
+              icon="refresh-cw"
+              onPress={async () => {
+                try {
+                  await restore();
+                  if (Platform.OS !== "web") {
+                    Alert.alert("Restored", "We refreshed your purchases.");
+                  }
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : "Restore failed";
+                  if (Platform.OS === "web") window.alert(message);
+                  else Alert.alert("Restore failed", message);
+                }
+              }}
+              loading={isRestoring}
+              disabled={!available}
             />
           </View>
         </Card>

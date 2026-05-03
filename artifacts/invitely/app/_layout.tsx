@@ -16,6 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useColors } from "@/hooks/useColors";
+import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
 import { InviteStoreProvider } from "@/store/InviteStore";
 
 SplashScreen.preventAutoHideAsync();
@@ -61,6 +62,10 @@ function RootLayoutNav() {
       <Stack.Screen name="event/[id]/uploads" options={{ title: "Photo Queue" }} />
       <Stack.Screen name="event/[id]/guests" options={{ title: "Guest List" }} />
       <Stack.Screen name="event/[id]/slider" options={{ title: "Photo Slider" }} />
+      <Stack.Screen
+        name="upgrade"
+        options={{ title: "Upgrade", presentation: "modal" }}
+      />
     </Stack>
   );
 }
@@ -79,6 +84,14 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
+  useEffect(() => {
+    try {
+      initializeRevenueCat();
+    } catch (err) {
+      console.warn("RevenueCat init skipped:", err);
+    }
+  }, []);
+
   if (!fontsLoaded && !fontError) return null;
 
   return (
@@ -88,8 +101,10 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <InviteStoreProvider>
-                <StatusBar style="auto" />
-                <RootLayoutNav />
+                <SubscriptionProvider>
+                  <StatusBar style="auto" />
+                  <RootLayoutNav />
+                </SubscriptionProvider>
               </InviteStoreProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>

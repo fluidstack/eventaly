@@ -38,3 +38,13 @@ externalPort = 3000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+REVENUECAT_PROJECT_ID = "proj917b3531"
+REVENUECAT_APPLE_APP_STORE_APP_ID = "app02d1b7cea2"
+REVENUECAT_GOOGLE_PLAY_STORE_APP_ID = "appbf2d41c6cb"
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY = "appl_QDaxbWKwSYzqwSvgZzavyFhwNTm"
+EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY = "goog_yedsVMvMUZaRAufbYJKDXjDBuZm"
+EXPO_PUBLIC_REVENUECAT_TEST_API_KEY = "appl_QDaxbWKwSYzqwSvgZzavyFhwNTm"

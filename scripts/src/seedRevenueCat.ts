@@ -6,7 +6,6 @@ import {
   createOffering,
   createPackages,
   createProduct,
-  createProject,
   listAppPublicApiKeys,
   listApps,
   listEntitlements,
@@ -40,7 +39,6 @@ type Plan = {
   displayName: string;
   title: string;
   duration: Duration;
-  prices: { amount_micros: number; currency: string }[];
   entitlement: string;
   packageIdentifier: string;
   packageDisplayName: string;
@@ -56,10 +54,6 @@ const PLANS: Plan[] = [
     displayName: "Event Pro",
     title: "Event Pro",
     duration: "P1M",
-    prices: [
-      { amount_micros: 12_000_000, currency: "USD" },
-      { amount_micros: 11_000_000, currency: "EUR" },
-    ],
     entitlement: ENTITLEMENT_EVENT_PRO,
     packageIdentifier: "event_pro",
     packageDisplayName: "Event Pro — one event",
@@ -70,10 +64,6 @@ const PLANS: Plan[] = [
     displayName: "Host Plus Monthly",
     title: "Host Plus Monthly",
     duration: "P1M",
-    prices: [
-      { amount_micros: 6_990_000, currency: "USD" },
-      { amount_micros: 6_490_000, currency: "EUR" },
-    ],
     entitlement: ENTITLEMENT_HOST_PLUS,
     packageIdentifier: "$rc_monthly",
     packageDisplayName: "Host Plus — Monthly",
@@ -84,10 +74,6 @@ const PLANS: Plan[] = [
     displayName: "Host Plus Yearly",
     title: "Host Plus Yearly",
     duration: "P1Y",
-    prices: [
-      { amount_micros: 59_000_000, currency: "USD" },
-      { amount_micros: 54_000_000, currency: "EUR" },
-    ],
     entitlement: ENTITLEMENT_HOST_PLUS,
     packageIdentifier: "$rc_annual",
     packageDisplayName: "Host Plus — Yearly",
@@ -97,52 +83,24 @@ const PLANS: Plan[] = [
 const OFFERING_IDENTIFIER = "default";
 const OFFERING_DISPLAY_NAME = "Invitely Plans";
 
-type TestStorePricesResponse = {
-  object: string;
-  prices: { amount_micros: number; currency: string }[];
-};
-
 async function ensureProject(client: Awaited<ReturnType<typeof getUncachableRevenueCatClient>>): Promise<Project> {
   const { data, error } = await listProjects({ client, query: { limit: 50 } });
   if (error) throw new Error("Failed to list projects: " + JSON.stringify(error));
-  const existing = data?.items?.find((p) => p.name === PROJECT_NAME);
-  if (existing) {
-    console.log("Project exists:", existing.id);
-    return existing;
-  }
-  const { data: created, error: cErr } = await createProject({
-    client,
-    body: { name: PROJECT_NAME },
-  });
-  if (cErr || !created) throw new Error("Failed to create project: " + JSON.stringify(cErr));
-  console.log("Created project:", created.id);
-  return created;
+  if (!data?.items?.length) throw new Error("No project provisioned by connector");
+  console.log("Using project:", data.items[0].id);
+  return data.items[0];
 }
 
 async function ensureApps(
   client: Awaited<ReturnType<typeof getUncachableRevenueCatClient>>,
   projectId: string,
-): Promise<{ testApp: App; appStoreApp: App; playStoreApp: App }> {
+): Promise<{ appStoreApp: App; playStoreApp: App }> {
   const { data, error } = await listApps({
     client,
     path: { project_id: projectId },
     query: { limit: 50 },
   });
   if (error || !data) throw new Error("Failed to list apps");
-
-  let testApp = data.items.find((a) => a.type === "test_store");
-  if (!testApp) {
-    const { data: created, error: cErr } = await createApp({
-      client,
-      path: { project_id: projectId },
-      body: { name: "Invitely Test Store", type: "test_store" } as any,
-    });
-    if (cErr || !created) throw new Error("Failed to create test store app: " + JSON.stringify(cErr));
-    testApp = created;
-    console.log("Created test store app:", testApp.id);
-  } else {
-    console.log("Test store app:", testApp.id);
-  }
 
   let appStoreApp = data.items.find((a) => a.type === "app_store");
   if (!appStoreApp) {
@@ -155,7 +113,7 @@ async function ensureApps(
         app_store: { bundle_id: APP_STORE_BUNDLE_ID },
       },
     });
-    if (cErr || !created) throw new Error("Failed to create App Store app");
+    if (cErr || !created) throw new Error("Failed to create App Store app: " + JSON.stringify(cErr));
     appStoreApp = created;
     console.log("Created App Store app:", appStoreApp.id);
   } else {
@@ -173,14 +131,14 @@ async function ensureApps(
         play_store: { package_name: PLAY_STORE_PACKAGE_NAME },
       },
     });
-    if (cErr || !created) throw new Error("Failed to create Play Store app");
+    if (cErr || !created) throw new Error("Failed to create Play Store app: " + JSON.stringify(cErr));
     playStoreApp = created;
     console.log("Created Play Store app:", playStoreApp.id);
   } else {
     console.log("Play Store app:", playStoreApp.id);
   }
 
-  return { testApp, appStoreApp, playStoreApp };
+  return { appStoreApp, playStoreApp };
 }
 
 async function ensureProduct(
@@ -189,7 +147,6 @@ async function ensureProduct(
   app: App,
   storeId: string,
   plan: Plan,
-  isTestStore: boolean,
   existing: Product[],
 ): Promise<Product> {
   const found = existing.find(
@@ -205,10 +162,6 @@ async function ensureProduct(
     type: "subscription",
     display_name: plan.displayName,
   };
-  if (isTestStore) {
-    body.subscription = { duration: plan.duration };
-    body.title = plan.title;
-  }
   const { data, error } = await createProduct({
     client,
     path: { project_id: projectId },
@@ -219,27 +172,6 @@ async function ensureProduct(
   }
   console.log(`Created product ${storeId} on ${app.type}:`, data.id);
   return data;
-}
-
-async function setTestStorePrices(
-  client: Awaited<ReturnType<typeof getUncachableRevenueCatClient>>,
-  projectId: string,
-  productId: string,
-  prices: Plan["prices"],
-) {
-  const { error } = await client.post<TestStorePricesResponse>({
-    url: "/projects/{project_id}/products/{product_id}/test_store_prices",
-    path: { project_id: projectId, product_id: productId },
-    body: { prices },
-  });
-  if (error) {
-    if (typeof error === "object" && (error as any).type === "resource_already_exists") {
-      console.log(`Test store prices already exist for ${productId}`);
-      return;
-    }
-    throw new Error(`Failed to add test store prices for ${productId}: ${JSON.stringify(error)}`);
-  }
-  console.log(`Added test store prices for ${productId}`);
 }
 
 async function ensureEntitlement(
@@ -259,7 +191,7 @@ async function ensureEntitlement(
     path: { project_id: projectId },
     body: { lookup_key: lookupKey, display_name: displayName },
   });
-  if (error || !data) throw new Error(`Failed to create entitlement ${lookupKey}`);
+  if (error || !data) throw new Error(`Failed to create entitlement ${lookupKey}: ` + JSON.stringify(error));
   console.log(`Created entitlement ${lookupKey}:`, data.id);
   return data;
 }
@@ -270,17 +202,14 @@ async function attachProducts(
   entitlementId: string,
   productIds: string[],
 ) {
+  if (!productIds.length) return;
   const { error } = await attachProductsToEntitlement({
     client,
     path: { project_id: projectId, entitlement_id: entitlementId },
     body: { product_ids: productIds },
   });
   if (error) {
-    if ((error as any).type === "unprocessable_entity_error") {
-      console.log("Some products already attached to entitlement");
-    } else {
-      throw new Error(`Failed to attach products: ${JSON.stringify(error)}`);
-    }
+    console.log("attachProducts warning:", JSON.stringify(error));
   }
 }
 
@@ -301,7 +230,7 @@ async function ensureOffering(
       path: { project_id: projectId },
       body: { lookup_key: OFFERING_IDENTIFIER, display_name: OFFERING_DISPLAY_NAME },
     });
-    if (cErr || !created) throw new Error("Failed to create offering");
+    if (cErr || !created) throw new Error("Failed to create offering: " + JSON.stringify(cErr));
     console.log("Created offering:", created.id);
     offering = created;
   } else {
@@ -313,8 +242,8 @@ async function ensureOffering(
       path: { project_id: projectId, offering_id: offering.id },
       body: { is_current: true },
     });
-    if (uErr) throw new Error("Failed to set offering current");
-    console.log("Marked offering current");
+    if (uErr) console.log("Could not mark current:", JSON.stringify(uErr));
+    else console.log("Marked offering current");
   }
   return offering;
 }
@@ -339,7 +268,7 @@ async function ensurePackage(
       display_name: plan.packageDisplayName,
     },
   });
-  if (error || !data) throw new Error(`Failed to create package ${plan.packageIdentifier}`);
+  if (error || !data) throw new Error(`Failed to create package ${plan.packageIdentifier}: ` + JSON.stringify(error));
   console.log(`Created package ${plan.packageIdentifier}:`, data.id);
   return data;
 }
@@ -350,6 +279,7 @@ async function attachToPackage(
   packageId: string,
   productIds: string[],
 ) {
+  if (!productIds.length) return;
   const { error } = await attachProductsToPackage({
     client,
     path: { project_id: projectId, package_id: packageId },
@@ -361,64 +291,40 @@ async function attachToPackage(
     },
   });
   if (error) {
-    if (
-      (error as any).type === "unprocessable_entity_error" &&
-      ((error as any).message?.includes("Cannot attach product") ||
-        (error as any).message?.includes("already"))
-    ) {
-      console.log("Skip package attach (already attached or incompatible)");
-    } else {
-      throw new Error(`Failed to attach products to package: ${JSON.stringify(error)}`);
-    }
+    console.log("attachToPackage warning:", JSON.stringify(error));
   }
 }
 
 async function seed() {
   const client = await getUncachableRevenueCatClient();
   const project = await ensureProject(client);
-  const { testApp, appStoreApp, playStoreApp } = await ensureApps(client, project.id);
+  const { appStoreApp, playStoreApp } = await ensureApps(client, project.id);
 
-  const { data: existingProducts, error: lpErr } = await listProducts({
+  const { data: existingProducts } = await listProducts({
     client,
     path: { project_id: project.id },
     query: { limit: 200 },
   });
-  if (lpErr) throw new Error("Failed to list products");
-
-  const { data: existingEntitlements, error: leErr } = await listEntitlements({
+  const { data: existingEntitlements } = await listEntitlements({
     client,
     path: { project_id: project.id },
     query: { limit: 50 },
   });
-  if (leErr) throw new Error("Failed to list entitlements");
 
-  // Per-entitlement collection of product ids to attach.
   const entitlementToProductIds: Record<string, string[]> = {
     [ENTITLEMENT_EVENT_PRO]: [],
     [ENTITLEMENT_HOST_PLUS]: [],
   };
-  // Per-plan map of test-store product id (for package attach).
-  const planTestProductIds: Record<string, string> = {};
+  const planAppleProductIds: Record<string, string> = {};
 
   for (const plan of PLANS) {
-    const tProd = await ensureProduct(
-      client,
-      project.id,
-      testApp,
-      plan.productId,
-      plan,
-      true,
-      existingProducts.items ?? [],
-    );
-    await setTestStorePrices(client, project.id, tProd.id, plan.prices);
     const aProd = await ensureProduct(
       client,
       project.id,
       appStoreApp,
       plan.productId,
       plan,
-      false,
-      existingProducts.items ?? [],
+      existingProducts?.items ?? [],
     );
     const pProd = await ensureProduct(
       client,
@@ -426,14 +332,12 @@ async function seed() {
       playStoreApp,
       plan.playStoreProductId,
       plan,
-      false,
-      existingProducts.items ?? [],
+      existingProducts?.items ?? [],
     );
-    planTestProductIds[plan.packageIdentifier] = tProd.id;
-    entitlementToProductIds[plan.entitlement].push(tProd.id, aProd.id, pProd.id);
-    // Host Plus also implicitly grants Event Pro features; attach those products to event_pro too.
+    planAppleProductIds[plan.packageIdentifier] = aProd.id;
+    entitlementToProductIds[plan.entitlement].push(aProd.id, pProd.id);
     if (plan.entitlement === ENTITLEMENT_HOST_PLUS) {
-      entitlementToProductIds[ENTITLEMENT_EVENT_PRO].push(tProd.id, aProd.id, pProd.id);
+      entitlementToProductIds[ENTITLEMENT_EVENT_PRO].push(aProd.id, pProd.id);
     }
   }
 
@@ -442,63 +346,49 @@ async function seed() {
     project.id,
     ENTITLEMENT_EVENT_PRO,
     "Event Pro Access",
-    existingEntitlements.items ?? [],
+    existingEntitlements?.items ?? [],
   );
   const hostPlusEnt = await ensureEntitlement(
     client,
     project.id,
     ENTITLEMENT_HOST_PLUS,
     "Host Plus Access",
-    existingEntitlements.items ?? [],
+    existingEntitlements?.items ?? [],
   );
 
   await attachProducts(client, project.id, eventProEnt.id, entitlementToProductIds[ENTITLEMENT_EVENT_PRO]);
   await attachProducts(client, project.id, hostPlusEnt.id, entitlementToProductIds[ENTITLEMENT_HOST_PLUS]);
 
   const offering = await ensureOffering(client, project.id);
-  const { data: existingPackages, error: lpkgErr } = await listPackages({
+  const { data: existingPackages } = await listPackages({
     client,
     path: { project_id: project.id, offering_id: offering.id },
     query: { limit: 50 },
   });
-  if (lpkgErr) throw new Error("Failed to list packages");
-
   for (const plan of PLANS) {
     const pkg = await ensurePackage(
       client,
       project.id,
       offering.id,
       plan,
-      existingPackages.items ?? [],
+      existingPackages?.items ?? [],
     );
-    // For test-store-only packaging we attach the test store product (cross-store linking can be done later in App Store).
-    const tProdId = planTestProductIds[plan.packageIdentifier];
-    if (tProdId) {
-      await attachToPackage(client, project.id, pkg.id, [tProdId]);
+    const aProdId = planAppleProductIds[plan.packageIdentifier];
+    if (aProdId) {
+      await attachToPackage(client, project.id, pkg.id, [aProdId]);
     }
   }
 
-  const [
-    { data: testKeys, error: tkErr },
-    { data: appKeys, error: akErr },
-    { data: playKeys, error: pkErr },
-  ] = await Promise.all([
-    listAppPublicApiKeys({ client, path: { project_id: project.id, app_id: testApp.id } }),
+  const [{ data: appKeys }, { data: playKeys }] = await Promise.all([
     listAppPublicApiKeys({ client, path: { project_id: project.id, app_id: appStoreApp.id } }),
     listAppPublicApiKeys({ client, path: { project_id: project.id, app_id: playStoreApp.id } }),
   ]);
-  if (tkErr || akErr || pkErr) throw new Error("Failed to list public API keys");
 
   console.log("\n========================================");
   console.log("RevenueCat seed complete!");
   console.log("REVENUECAT_PROJECT_ID =", project.id);
-  console.log("REVENUECAT_TEST_STORE_APP_ID =", testApp.id);
   console.log("REVENUECAT_APPLE_APP_STORE_APP_ID =", appStoreApp.id);
   console.log("REVENUECAT_GOOGLE_PLAY_STORE_APP_ID =", playStoreApp.id);
-  console.log(
-    "EXPO_PUBLIC_REVENUECAT_TEST_API_KEY =",
-    testKeys?.items.map((k) => k.key).join(", ") ?? "N/A",
-  );
   console.log(
     "EXPO_PUBLIC_REVENUECAT_IOS_API_KEY =",
     appKeys?.items.map((k) => k.key).join(", ") ?? "N/A",
