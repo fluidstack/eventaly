@@ -3,13 +3,14 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { CustomTemplateFields } from "@/components/CustomTemplateFields";
 import { Field } from "@/components/Field";
 import { HeroPhotoEditor } from "@/components/HeroPhotoEditor";
 import { LockBadge } from "@/components/LockBadge";
+import { PresetTile } from "@/components/PresetTile";
 import { Button, Card, Label, Pill, Section } from "@/components/ui";
 import {
   DEFAULT_CUSTOM_ACCENT,
@@ -30,10 +31,11 @@ export default function EditEventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const router = useRouter();
-  const { state, updateEvent } = useInviteStore();
+  const { state, updateEvent, saveCustomPreset } = useInviteStore();
   const plan = usePlan();
   const event = state.events.find((e) => e.id === id);
   const eventUnlocked = id ? plan.isEventUnlocked(id) : false;
+  const customPresets = state.profile.customPresets ?? [];
 
   const [title, setTitle] = useState(event?.title ?? "");
   const [templateId, setTemplateId] = useState<TemplateId>(event?.templateId ?? "birthday");
@@ -49,6 +51,55 @@ export default function EditEventScreen() {
   const [customName, setCustomName] = useState(event?.customName ?? "");
   const [customTagline, setCustomTagline] = useState(event?.customTagline ?? "");
   const [customAccent, setCustomAccent] = useState(event?.customAccent ?? DEFAULT_CUSTOM_ACCENT);
+  const [activePresetId, setActivePresetId] = useState<string | undefined>(
+    event?.customPresetId,
+  );
+
+  const onChangeCustomName = (v: string) => {
+    setCustomName(v);
+    setActivePresetId(undefined);
+  };
+  const onChangeCustomTagline = (v: string) => {
+    setCustomTagline(v);
+    setActivePresetId(undefined);
+  };
+  const onChangeCustomAccent = (v: string) => {
+    setCustomAccent(v);
+    setActivePresetId(undefined);
+  };
+
+  const applyPreset = (presetId: string) => {
+    const preset = customPresets.find((p) => p.id === presetId);
+    if (!preset) return;
+    setTemplateId("custom");
+    setCustomName(preset.name);
+    setCustomTagline(preset.tagline);
+    setCustomAccent(preset.accent);
+    setHeroPhotoUri(preset.heroPhotoUri);
+    setHeroFilter(preset.heroPhotoUri ? preset.heroFilter ?? "none" : "none");
+    setActivePresetId(preset.id);
+  };
+
+  const onSavePreset = () => {
+    const trimmedName = customName.trim();
+    if (!trimmedName) {
+      const msg = "Add a template name before saving as a preset.";
+      if (Platform.OS === "web") window.alert(msg);
+      else Alert.alert("Name required", msg);
+      return;
+    }
+    const created = saveCustomPreset({
+      name: trimmedName,
+      tagline: customTagline.trim() || DEFAULT_CUSTOM_TAGLINE,
+      accent: customAccent,
+      heroPhotoUri,
+      heroFilter: heroPhotoUri ? heroFilter : undefined,
+    });
+    setActivePresetId(created.id);
+    const ok = `"${created.name}" is saved. You can reuse it on other events.`;
+    if (Platform.OS === "web") window.alert(ok);
+    else Alert.alert("Preset saved", ok);
+  };
 
   if (!event) {
     return (
@@ -99,6 +150,7 @@ export default function EditEventScreen() {
       customTagline:
         templateId === "custom" ? customTagline.trim() || DEFAULT_CUSTOM_TAGLINE : undefined,
       customAccent: templateId === "custom" ? customAccent : undefined,
+      customPresetId: templateId === "custom" ? activePresetId : undefined,
       message: message.trim(),
       location: location.trim(),
       startISO,
@@ -119,8 +171,20 @@ export default function EditEventScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 10 }}
         >
+          {customPresets.map((p) => (
+            <PresetTile
+              key={p.id}
+              preset={p}
+              active={templateId === "custom" && activePresetId === p.id}
+              onPress={() => applyPreset(p.id)}
+              width={110}
+              height={130}
+              showTagline={false}
+            />
+          ))}
           {TEMPLATES.map((t) => {
-            const active = t.id === templateId;
+            const active =
+              t.id === templateId && !(t.id === "custom" && activePresetId);
             const locked = !!t.premium && !eventUnlocked;
             return (
               <Pressable
@@ -131,6 +195,7 @@ export default function EditEventScreen() {
                     return;
                   }
                   setTemplateId(t.id);
+                  setActivePresetId(undefined);
                 }}
                 style={{
                   width: 110,
@@ -172,11 +237,54 @@ export default function EditEventScreen() {
       {showCustomFields && (
         <CustomTemplateFields
           name={customName}
-          onChangeName={setCustomName}
+          onChangeName={onChangeCustomName}
           tagline={customTagline}
-          onChangeTagline={setCustomTagline}
+          onChangeTagline={onChangeCustomTagline}
           accent={customAccent}
-          onChangeAccent={setCustomAccent}
+          onChangeAccent={onChangeCustomAccent}
+          footer={
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Pressable
+                onPress={onSavePreset}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.card,
+                  opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                <Feather name="bookmark" size={13} color={colors.foreground} />
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 12,
+                  }}
+                >
+                  Save as preset
+                </Text>
+              </Pressable>
+              {activePresetId ? (
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontFamily: "Inter_400Regular",
+                    fontSize: 11,
+                    flex: 1,
+                  }}
+                  numberOfLines={1}
+                >
+                  Using your saved preset.
+                </Text>
+              ) : null}
+            </View>
+          }
         />
       )}
 
@@ -292,6 +400,7 @@ export default function EditEventScreen() {
               onPress={() => {
                 setHeroPhotoUri(undefined);
                 setHeroFilter("none");
+                setActivePresetId(undefined);
               }}
               style={({ pressed }) => ({
                 flexDirection: "row",
@@ -328,6 +437,7 @@ export default function EditEventScreen() {
         onSave={({ uri, filter }) => {
           setHeroPhotoUri(uri);
           setHeroFilter(filter);
+          setActivePresetId(undefined);
           setEditorOpen(false);
         }}
       />

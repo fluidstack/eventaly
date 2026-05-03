@@ -3,13 +3,14 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { CustomTemplateFields } from "@/components/CustomTemplateFields";
 import { Field } from "@/components/Field";
 import { HeroPhotoEditor } from "@/components/HeroPhotoEditor";
 import { LockBadge } from "@/components/LockBadge";
+import { PresetTile } from "@/components/PresetTile";
 import { Body, Button, Card, EmptyState, H2, Label, Pill, Section } from "@/components/ui";
 import {
   DEFAULT_CUSTOM_ACCENT,
@@ -29,7 +30,7 @@ import { useInviteStore } from "@/store/InviteStore";
 export default function NewEventScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { state, ready, createEvent } = useInviteStore();
+  const { state, ready, createEvent, saveCustomPreset } = useInviteStore();
   const plan = usePlan();
   const defaultTemplate = state.profile.defaultTemplate;
 
@@ -69,6 +70,8 @@ export default function NewEventScreen() {
   const [customName, setCustomName] = useState("");
   const [customTagline, setCustomTagline] = useState("");
   const [customAccent, setCustomAccent] = useState(DEFAULT_CUSTOM_ACCENT);
+  const [activePresetId, setActivePresetId] = useState<string | undefined>();
+  const customPresets = state.profile.customPresets ?? [];
 
   const template = resolveEventTemplate({
     templateId,
@@ -76,6 +79,55 @@ export default function NewEventScreen() {
     customTagline,
     customAccent,
   });
+
+  const onChangeCustomName = (v: string) => {
+    setCustomName(v);
+    setActivePresetId(undefined);
+  };
+  const onChangeCustomTagline = (v: string) => {
+    setCustomTagline(v);
+    setActivePresetId(undefined);
+  };
+  const onChangeCustomAccent = (v: string) => {
+    setCustomAccent(v);
+    setActivePresetId(undefined);
+  };
+
+  const applyPreset = (presetId: string) => {
+    const preset = customPresets.find((p) => p.id === presetId);
+    if (!preset) return;
+    setTemplateId("custom");
+    setCustomName(preset.name);
+    setCustomTagline(preset.tagline);
+    setCustomAccent(preset.accent);
+    setHeroPhotoUri(preset.heroPhotoUri);
+    setHeroFilter(preset.heroPhotoUri ? preset.heroFilter ?? "none" : "none");
+    setActivePresetId(preset.id);
+    if (!message || TEMPLATES.some((t) => t.copyHints.includes(message))) {
+      setMessage(getTemplate("custom").copyHints[0]);
+    }
+  };
+
+  const onSavePreset = () => {
+    const trimmedName = customName.trim();
+    if (!trimmedName) {
+      const msg = "Add a template name before saving as a preset.";
+      if (Platform.OS === "web") window.alert(msg);
+      else Alert.alert("Name required", msg);
+      return;
+    }
+    const created = saveCustomPreset({
+      name: trimmedName,
+      tagline: customTagline.trim() || DEFAULT_CUSTOM_TAGLINE,
+      accent: customAccent,
+      heroPhotoUri,
+      heroFilter: heroPhotoUri ? heroFilter : undefined,
+    });
+    setActivePresetId(created.id);
+    const ok = `"${created.name}" is saved. You can pick it from the template row on any event.`;
+    if (Platform.OS === "web") window.alert(ok);
+    else Alert.alert("Preset saved", ok);
+  };
 
   const onPickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -133,6 +185,7 @@ export default function NewEventScreen() {
       customTagline:
         templateId === "custom" ? customTagline.trim() || DEFAULT_CUSTOM_TAGLINE : undefined,
       customAccent: templateId === "custom" ? customAccent : undefined,
+      customPresetId: templateId === "custom" ? activePresetId : undefined,
       message: message.trim() || template.copyHints[0],
       startISO,
       location: location.trim(),
@@ -148,6 +201,7 @@ export default function NewEventScreen() {
       return;
     }
     setTemplateId(id);
+    setActivePresetId(undefined);
     if (!message || TEMPLATES.some((t) => t.copyHints.includes(message))) {
       setMessage(getTemplate(id).copyHints[0]);
     }
@@ -171,8 +225,17 @@ export default function NewEventScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 12, paddingRight: 8 }}
       >
+        {customPresets.map((p) => (
+          <PresetTile
+            key={p.id}
+            preset={p}
+            active={templateId === "custom" && activePresetId === p.id}
+            onPress={() => applyPreset(p.id)}
+          />
+        ))}
         {TEMPLATES.map((t) => {
-          const active = t.id === templateId;
+          const active =
+            t.id === templateId && !(t.id === "custom" && activePresetId);
           const locked = !!t.premium && !plan.isHostPlus;
           return (
             <Pressable
@@ -229,11 +292,54 @@ export default function NewEventScreen() {
       {showCustomFields && (
         <CustomTemplateFields
           name={customName}
-          onChangeName={setCustomName}
+          onChangeName={onChangeCustomName}
           tagline={customTagline}
-          onChangeTagline={setCustomTagline}
+          onChangeTagline={onChangeCustomTagline}
           accent={customAccent}
-          onChangeAccent={setCustomAccent}
+          onChangeAccent={onChangeCustomAccent}
+          footer={
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Pressable
+                onPress={onSavePreset}
+                style={({ pressed }) => ({
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  backgroundColor: colors.card,
+                  opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                <Feather name="bookmark" size={13} color={colors.foreground} />
+                <Text
+                  style={{
+                    color: colors.foreground,
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 12,
+                  }}
+                >
+                  Save as preset
+                </Text>
+              </Pressable>
+              {activePresetId ? (
+                <Text
+                  style={{
+                    color: colors.mutedForeground,
+                    fontFamily: "Inter_400Regular",
+                    fontSize: 11,
+                    flex: 1,
+                  }}
+                  numberOfLines={1}
+                >
+                  Using your saved preset.
+                </Text>
+              ) : null}
+            </View>
+          }
         />
       )}
 
@@ -356,6 +462,7 @@ export default function NewEventScreen() {
               onPress={() => {
                 setHeroPhotoUri(undefined);
                 setHeroFilter("none");
+                setActivePresetId(undefined);
               }}
               style={({ pressed }) => ({
                 flexDirection: "row",
@@ -392,6 +499,7 @@ export default function NewEventScreen() {
         onSave={({ uri, filter }) => {
           setHeroPhotoUri(uri);
           setHeroFilter(filter);
+          setActivePresetId(undefined);
           setEditorOpen(false);
         }}
       />

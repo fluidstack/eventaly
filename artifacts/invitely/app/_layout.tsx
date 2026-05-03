@@ -48,6 +48,7 @@ function RootLayoutNav() {
         options={{ title: "", headerTransparent: true }}
       />
       <Stack.Screen name="event/[id]/edit" options={{ title: "Edit Event" }} />
+      <Stack.Screen name="preset/[id]" options={{ title: "Edit Preset" }} />
       <Stack.Screen
         name="event/[id]/invite"
         options={{ title: "Share Invite", presentation: "modal" }}

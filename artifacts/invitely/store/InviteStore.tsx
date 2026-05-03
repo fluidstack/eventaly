@@ -12,6 +12,7 @@ import { uid } from "@/lib/format";
 import {
   AppNotification,
   AppState,
+  CustomPreset,
   Event,
   InviteChannel,
   InvitedGuest,
@@ -34,6 +35,7 @@ const DEFAULT_PROFILE: Profile = {
   billingPlan: "free",
   unlockedEventIds: [],
   eventProClaims: [],
+  customPresets: [],
 };
 
 function seedState(): AppState {
@@ -166,6 +168,10 @@ type Ctx = {
    * eventId is also removed from `unlockedEventIds`.
    */
   syncEventProClaims: (validTransactionIds: string[]) => void;
+  // custom presets
+  saveCustomPreset: (preset: Omit<CustomPreset, "id" | "createdAt">) => CustomPreset;
+  updateCustomPreset: (id: string, patch: Partial<Omit<CustomPreset, "id" | "createdAt">>) => void;
+  deleteCustomPreset: (id: string) => void;
   completeOnboarding: (name: string, email: string) => void;
   // notifications
   markAllRead: () => void;
@@ -197,6 +203,9 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
           }
           if (!parsed.profile.eventProClaims) {
             parsed.profile.eventProClaims = [];
+          }
+          if (!parsed.profile.customPresets) {
+            parsed.profile.customPresets = [];
           }
           if (!parsed.profile.id) {
             parsed.profile.id = uid();
@@ -443,6 +452,56 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
             },
           };
         });
+      },
+      saveCustomPreset: (preset) => {
+        const created: CustomPreset = {
+          ...preset,
+          name: preset.name.trim(),
+          tagline: preset.tagline.trim(),
+          id: uid(),
+          createdAt: new Date().toISOString(),
+        };
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            customPresets: [...(s.profile.customPresets ?? []), created],
+          },
+        }));
+        return created;
+      },
+      updateCustomPreset: (id, patch) => {
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            customPresets: (s.profile.customPresets ?? []).map((p) =>
+              p.id === id
+                ? {
+                    ...p,
+                    ...patch,
+                    name: patch.name !== undefined ? patch.name.trim() : p.name,
+                    tagline:
+                      patch.tagline !== undefined ? patch.tagline.trim() : p.tagline,
+                  }
+                : p,
+            ),
+          },
+        }));
+      },
+      deleteCustomPreset: (id) => {
+        setState((s) => ({
+          ...s,
+          profile: {
+            ...s.profile,
+            customPresets: (s.profile.customPresets ?? []).filter((p) => p.id !== id),
+          },
+          // Drop the reference on any events that were created from this
+          // preset; their copied custom values stay in place.
+          events: s.events.map((e) =>
+            e.customPresetId === id ? { ...e, customPresetId: undefined } : e,
+          ),
+        }));
       },
       completeOnboarding: (name, email) => {
         setState((s) => ({

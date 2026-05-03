@@ -1,6 +1,6 @@
 import { ImageSourcePropType } from "react-native";
 
-import type { Event } from "@/store/types";
+import type { CustomPreset, Event } from "@/store/types";
 
 export type TemplateId =
   | "birthday"
@@ -197,6 +197,21 @@ export const TEMPLATES: Template[] = [
 
 export function getTemplate(id: TemplateId | string | undefined): Template {
   return TEMPLATES.find((t) => t.id === id) ?? TEMPLATES[0];
+}
+
+/**
+ * Build a Template tile for a saved Custom preset so it can render in the
+ * template picker alongside the built-in templates.
+ */
+export function customPresetTemplate(preset: CustomPreset): Template {
+  const base = getTemplate("custom");
+  return {
+    ...base,
+    id: "custom",
+    name: preset.name?.trim() || DEFAULT_CUSTOM_NAME,
+    tagline: preset.tagline?.trim() || DEFAULT_CUSTOM_TAGLINE,
+    accent: preset.accent || DEFAULT_CUSTOM_ACCENT,
+  };
 }
 
 /**

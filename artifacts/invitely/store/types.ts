@@ -1,6 +1,16 @@
 import { TemplateId } from "@/constants/templates";
 import { HeroFilterId } from "@/lib/heroFilters";
 
+export type CustomPreset = {
+  id: string;
+  name: string;
+  tagline: string;
+  accent: string;
+  heroPhotoUri?: string;
+  heroFilter?: HeroFilterId;
+  createdAt: string;
+};
+
 export type RsvpStatus = "yes" | "no" | "maybe";
 
 export type Rsvp = {
@@ -58,6 +68,9 @@ export type Event = {
   customName?: string;
   customTagline?: string;
   customAccent?: string;
+  /** When the custom template values came from a saved preset, remember which
+   * one so the picker can highlight it on the edit screen. */
+  customPresetId?: string;
   message: string;
   startISO: string;
   location: string;
@@ -110,6 +123,8 @@ export type Profile = {
    *     same data to a RevenueCat subscriber attribute on every change.
    */
   eventProClaims: { transactionId: string; eventId: string }[];
+  /** Saved Custom-template presets the user can reuse across events. */
+  customPresets: CustomPreset[];
 };
 
 export type AppState = {

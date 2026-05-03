@@ -13,6 +13,8 @@ type Props = {
   onChangeTagline: (v: string) => void;
   accent: string;
   onChangeAccent: (v: string) => void;
+  /** Optional footer slot — used to render "Save as preset" actions. */
+  footer?: React.ReactNode;
 };
 
 export function CustomTemplateFields({
@@ -22,6 +24,7 @@ export function CustomTemplateFields({
   onChangeTagline,
   accent,
   onChangeAccent,
+  footer,
 }: Props) {
   const colors = useColors();
   return (
@@ -75,6 +78,7 @@ export function CustomTemplateFields({
               or we'll use a soft default.
             </Text>
           </View>
+          {footer ? <View style={{ marginTop: 4 }}>{footer}</View> : null}
         </View>
       </Section>
     </Card>

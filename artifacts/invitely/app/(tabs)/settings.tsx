@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Alert, Platform, Pressable, Text, View } from "react-native";
 
 import { Field } from "@/components/Field";
+import { PresetTile } from "@/components/PresetTile";
 import { Screen } from "@/components/Screen";
 import { Body, Button, Card, H1, Pill, Section } from "@/components/ui";
 import { SELECTABLE_DEFAULT_TEMPLATES } from "@/constants/templates";
@@ -16,7 +17,8 @@ import { useInviteStore } from "@/store/InviteStore";
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { state, updateProfile, resetData } = useInviteStore();
+  const { state, updateProfile, resetData, updateCustomPreset, deleteCustomPreset } =
+    useInviteStore();
   const { isHostPlus, hasEventProEntitlement, isRestoring, restore, available } =
     useSubscription();
   const plan = usePlan();
@@ -30,6 +32,54 @@ export default function SettingsScreen() {
       : "Free";
 
   const saveProfile = () => updateProfile({ name, email });
+
+  const customPresets = state.profile.customPresets ?? [];
+
+  const onRenamePreset = (presetId: string, currentName: string) => {
+    if (Platform.OS === "web") {
+      const next = window.prompt("Rename preset", currentName);
+      if (next && next.trim()) {
+        updateCustomPreset(presetId, { name: next.trim() });
+      }
+      return;
+    }
+    Alert.prompt(
+      "Rename preset",
+      "Pick a new name for this saved template.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Save",
+          onPress: (v?: string) => {
+            if (v && v.trim()) updateCustomPreset(presetId, { name: v.trim() });
+          },
+        },
+      ],
+      "plain-text",
+      currentName,
+    );
+  };
+
+  const onDeletePreset = (presetId: string, presetName: string) => {
+    if (Platform.OS === "web") {
+      if (window.confirm(`Delete "${presetName}"? This cannot be undone.`)) {
+        deleteCustomPreset(presetId);
+      }
+      return;
+    }
+    Alert.alert(
+      "Delete preset?",
+      `"${presetName}" will be removed from your saved templates.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => deleteCustomPreset(presetId),
+        },
+      ],
+    );
+  };
 
   const confirmReset = () => {
     if (Platform.OS === "web") {
@@ -178,6 +228,76 @@ export default function SettingsScreen() {
         </View>
       </Section>
 
+      <Section title="Saved templates">
+        {customPresets.length === 0 ? (
+          <Card>
+            <Body muted>
+              Save a Custom template from the new event screen and it'll show
+              up here, ready to reuse on any future event.
+            </Body>
+          </Card>
+        ) : (
+          <View style={{ gap: 12 }}>
+            {customPresets.map((p) => (
+              <Card key={p.id}>
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <PresetTile
+                    preset={p}
+                    active={false}
+                    onPress={() => router.push(`/preset/${p.id}`)}
+                    width={88}
+                    height={104}
+                    showTagline={false}
+                  />
+                  <View style={{ flex: 1, justifyContent: "space-between", gap: 8 }}>
+                    <View style={{ gap: 2 }}>
+                      <Text
+                        style={{
+                          color: colors.foreground,
+                          fontFamily: "Inter_600SemiBold",
+                          fontSize: 15,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {p.name}
+                      </Text>
+                      <Text
+                        style={{
+                          color: colors.mutedForeground,
+                          fontFamily: "Inter_400Regular",
+                          fontSize: 12,
+                        }}
+                        numberOfLines={2}
+                      >
+                        {p.tagline}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
+                      <PresetAction
+                        icon="edit-2"
+                        label="Edit"
+                        onPress={() => router.push(`/preset/${p.id}`)}
+                      />
+                      <PresetAction
+                        icon="type"
+                        label="Rename"
+                        onPress={() => onRenamePreset(p.id, p.name)}
+                      />
+                      <PresetAction
+                        icon="trash-2"
+                        label="Delete"
+                        onPress={() => onDeletePreset(p.id, p.name)}
+                        destructive
+                      />
+                    </View>
+                  </View>
+                </View>
+              </Card>
+            ))}
+          </View>
+        )}
+      </Section>
+
       <Section title="Reminders">
         <Card>
           <View style={{ gap: 12 }}>
@@ -313,6 +433,49 @@ export default function SettingsScreen() {
         />
       </View>
     </Screen>
+  );
+}
+
+function PresetAction({
+  icon,
+  label,
+  onPress,
+  destructive,
+}: {
+  icon: React.ComponentProps<typeof Feather>["name"];
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+}) {
+  const colors = useColors();
+  const tint = destructive ? colors.destructive ?? "#DC2626" : colors.foreground;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.background,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <Feather name={icon} size={12} color={tint} />
+      <Text
+        style={{
+          color: tint,
+          fontFamily: "Inter_600SemiBold",
+          fontSize: 12,
+        }}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
