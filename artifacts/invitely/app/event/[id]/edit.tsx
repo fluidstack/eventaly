@@ -8,9 +8,11 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { Field } from "@/components/Field";
 import { HeroPhotoEditor } from "@/components/HeroPhotoEditor";
+import { LockBadge } from "@/components/LockBadge";
 import { Button, Card, Label, Pill, Section } from "@/components/ui";
-import { TEMPLATES, TemplateId, getTemplate } from "@/constants/templates";
+import { TEMPLATES, TemplateId, getTemplate, isPremiumTemplate } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
+import { usePlan } from "@/lib/gating";
 import { HeroFilterId, getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
 
@@ -19,7 +21,9 @@ export default function EditEventScreen() {
   const colors = useColors();
   const router = useRouter();
   const { state, updateEvent } = useInviteStore();
+  const plan = usePlan();
   const event = state.events.find((e) => e.id === id);
+  const eventUnlocked = id ? plan.isEventUnlocked(id) : false;
 
   const [title, setTitle] = useState(event?.title ?? "");
   const [templateId, setTemplateId] = useState<TemplateId>(event?.templateId ?? "birthday");
@@ -94,10 +98,17 @@ export default function EditEventScreen() {
         >
           {TEMPLATES.map((t) => {
             const active = t.id === templateId;
+            const locked = !!t.premium && !eventUnlocked;
             return (
               <Pressable
                 key={t.id}
-                onPress={() => setTemplateId(t.id)}
+                onPress={() => {
+                  if (locked) {
+                    router.push(`/upgrade?eventId=${event.id}`);
+                    return;
+                  }
+                  setTemplateId(t.id);
+                }}
                 style={{
                   width: 110,
                   borderRadius: 14,
@@ -106,7 +117,18 @@ export default function EditEventScreen() {
                   borderColor: active ? colors.primary : "transparent",
                 }}
               >
-                <Image source={t.image} style={{ width: "100%", height: 130 }} contentFit="cover" />
+                <View>
+                  <Image
+                    source={t.image}
+                    style={{ width: "100%", height: 130, opacity: locked ? 0.55 : 1 }}
+                    contentFit="cover"
+                  />
+                  {locked && (
+                    <View style={{ position: "absolute", top: 6, right: 6 }}>
+                      <LockBadge eventId={event.id} />
+                    </View>
+                  )}
+                </View>
                 <View style={{ padding: 8, backgroundColor: colors.card }}>
                   <Text
                     style={{

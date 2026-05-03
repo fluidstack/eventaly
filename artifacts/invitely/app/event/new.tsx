@@ -2,15 +2,17 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 import { Field } from "@/components/Field";
 import { HeroPhotoEditor } from "@/components/HeroPhotoEditor";
+import { LockBadge } from "@/components/LockBadge";
 import { Body, Button, Card, EmptyState, H2, Label, Pill, Section } from "@/components/ui";
-import { TEMPLATES, TemplateId, getTemplate } from "@/constants/templates";
+import { TEMPLATES, TemplateId, getTemplate, isPremiumTemplate } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
+import { usePlan } from "@/lib/gating";
 import { HeroFilterId, getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
 
@@ -18,7 +20,16 @@ export default function NewEventScreen() {
   const colors = useColors();
   const router = useRouter();
   const { state, createEvent } = useInviteStore();
+  const plan = usePlan();
   const defaultTemplate = state.profile.defaultTemplate;
+
+  // Hard-block direct entry to /event/new when the free quota is used.
+  // The home tab also gates the entry point, but routes can be hit directly.
+  useEffect(() => {
+    if (!plan.canCreateEvent) {
+      router.replace("/upgrade");
+    }
+  }, [plan.canCreateEvent, router]);
 
   const [title, setTitle] = useState("");
   const [templateId, setTemplateId] = useState<TemplateId>(defaultTemplate);
@@ -81,6 +92,10 @@ export default function NewEventScreen() {
   };
 
   const onSwapTemplate = (id: TemplateId) => {
+    if (isPremiumTemplate(id) && !plan.isHostPlus) {
+      router.push("/upgrade");
+      return;
+    }
     setTemplateId(id);
     if (!message || TEMPLATES.some((t) => t.copyHints.includes(message))) {
       setMessage(getTemplate(id).copyHints[0]);
@@ -105,6 +120,7 @@ export default function NewEventScreen() {
       >
         {TEMPLATES.map((t) => {
           const active = t.id === templateId;
+          const locked = !!t.premium && !plan.isHostPlus;
           return (
             <Pressable
               key={t.id}
@@ -118,11 +134,18 @@ export default function NewEventScreen() {
                 opacity: pressed ? 0.9 : 1,
               })}
             >
-              <Image
-                source={t.image}
-                style={{ width: "100%", height: 170 }}
-                contentFit="cover"
-              />
+              <View>
+                <Image
+                  source={t.image}
+                  style={{ width: "100%", height: 170, opacity: locked ? 0.55 : 1 }}
+                  contentFit="cover"
+                />
+                {locked && (
+                  <View style={{ position: "absolute", top: 8, right: 8 }}>
+                    <LockBadge />
+                  </View>
+                )}
+              </View>
               <View style={{ padding: 10, backgroundColor: colors.card }}>
                 <Text
                   style={{

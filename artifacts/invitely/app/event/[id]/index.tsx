@@ -6,10 +6,12 @@ import React, { useMemo } from "react";
 import { Alert, Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LockBadge } from "@/components/LockBadge";
 import { Screen } from "@/components/Screen";
 import { Body, Button, Card, Pill, Section } from "@/components/ui";
 import { getTemplate } from "@/constants/templates";
 import { useColors } from "@/hooks/useColors";
+import { usePlan } from "@/lib/gating";
 import { formatDate, formatTime, initials, relativeTime } from "@/lib/format";
 import { getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
@@ -20,8 +22,10 @@ export default function EventDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, deleteEvent } = useInviteStore();
+  const plan = usePlan();
 
   const event = state.events.find((e) => e.id === id);
+  const unlocked = id ? plan.isEventUnlocked(id) : false;
 
   if (!event) {
     return (
@@ -236,9 +240,31 @@ export default function EventDashboard() {
             </Pressable>
           </Section>
 
+          {plan.hasUnclaimedEventPro && !unlocked && (
+            <Card>
+              <View style={{ gap: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Feather name="gift" size={16} color={colors.primary} />
+                  <Body>You have an unused Event Pro unlock available.</Body>
+                </View>
+                <Button
+                  label="Apply Event Pro to this event"
+                  icon="unlock"
+                  onPress={() => router.push(`/upgrade?eventId=${event.id}`)}
+                />
+              </View>
+            </Card>
+          )}
+
           <Section title="Photos">
             <View style={{ gap: 10 }}>
-              <Pressable onPress={() => router.push(`/event/${event.id}/uploads`)}>
+              <Pressable
+                onPress={() =>
+                  unlocked
+                    ? router.push(`/event/${event.id}/uploads`)
+                    : router.push(`/upgrade?eventId=${event.id}`)
+                }
+              >
                 <Card>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <View
@@ -254,15 +280,18 @@ export default function EventDashboard() {
                       <Feather name="image" size={18} color={colors.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontFamily: "Inter_600SemiBold",
-                          fontSize: 15,
-                        }}
-                      >
-                        Photo queue
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text
+                          style={{
+                            color: colors.foreground,
+                            fontFamily: "Inter_600SemiBold",
+                            fontSize: 15,
+                          }}
+                        >
+                          Photo queue
+                        </Text>
+                        {!unlocked && <LockBadge eventId={event.id} />}
+                      </View>
                       <Text
                         style={{
                           color: colors.mutedForeground,
@@ -270,10 +299,12 @@ export default function EventDashboard() {
                           fontSize: 12,
                         }}
                       >
-                        {event.uploads.length} total · {pendingPhotos} need review
+                        {unlocked
+                          ? `${event.uploads.length} total · ${pendingPhotos} need review`
+                          : "Premium — Event Pro or Host Plus required"}
                       </Text>
                     </View>
-                    {pendingPhotos > 0 && (
+                    {unlocked && pendingPhotos > 0 && (
                       <Pill label={`${pendingPhotos}`} tone="primary" />
                     )}
                     <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
@@ -296,15 +327,18 @@ export default function EventDashboard() {
                       <Feather name="film" size={18} color={colors.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text
-                        style={{
-                          color: colors.foreground,
-                          fontFamily: "Inter_600SemiBold",
-                          fontSize: 15,
-                        }}
-                      >
-                        Post‑event slider
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text
+                          style={{
+                            color: colors.foreground,
+                            fontFamily: "Inter_600SemiBold",
+                            fontSize: 15,
+                          }}
+                        >
+                          Post‑event slider
+                        </Text>
+                        {!unlocked && <LockBadge eventId={event.id} />}
+                      </View>
                       <Text
                         style={{
                           color: colors.mutedForeground,
@@ -314,7 +348,9 @@ export default function EventDashboard() {
                       >
                         {event.slider.published
                           ? `Published ${event.slider.publishedAt ? relativeTime(event.slider.publishedAt) : ""}`
-                          : "Compose & publish a thank-you slider"}
+                          : unlocked
+                            ? "Compose & publish a thank-you slider"
+                            : "Premium — Event Pro or Host Plus required"}
                       </Text>
                     </View>
                     <Feather name="chevron-right" size={20} color={colors.mutedForeground} />

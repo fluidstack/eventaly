@@ -65,13 +65,22 @@ export default function UpgradeScreen() {
     isHostPlus,
     hasEventProEntitlement,
     isLoading,
-    isPurchasing,
     isRestoring,
     purchase,
     restore,
   } = useSubscription();
   const { unlockEvent, state } = useInviteStore();
   const event = eventId ? state.events.find((e) => e.id === eventId) : undefined;
+  const eventLocallyUnlocked = eventId
+    ? (state.profile.unlockedEventIds ?? []).includes(eventId)
+    : false;
+  // hasEventProEntitlement implies an active one-time unlock that hasn't yet
+  // been pinned to a local event id (e.g. fresh install + restore).
+  const canClaimForEvent =
+    !!eventId &&
+    hasEventProEntitlement &&
+    !eventLocallyUnlocked &&
+    !isHostPlus;
 
   const [pendingKey, setPendingKey] = useState<PlanKey | null>(null);
   const isPending = (k: PlanKey) => (pendingKey as string | null) === k;
@@ -143,7 +152,10 @@ export default function UpgradeScreen() {
     }
   };
 
-  const eventProDisabled = !available || hasEventProEntitlement || isHostPlus;
+  // Disable buy when host plus active OR they already hold an event_pro
+  // entitlement (they should claim/use it instead of buying again).
+  const eventProDisabled =
+    !available || isHostPlus || (hasEventProEntitlement && !canClaimForEvent);
   const hostPlusDisabled = !available || isHostPlus;
 
   return (
@@ -179,6 +191,25 @@ export default function UpgradeScreen() {
         </Card>
       )}
 
+      {event && canClaimForEvent && (
+        <Card>
+          <View style={{ gap: 10 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Feather name="gift" size={18} color={colors.primary} />
+              <Body>Apply your Event Pro unlock to "{event.title}".</Body>
+            </View>
+            <Button
+              label="Apply unlock"
+              icon="unlock"
+              onPress={() => {
+                unlockEvent(event.id);
+                router.back();
+              }}
+            />
+          </View>
+        </Card>
+      )}
+
       {event && (
         <PlanCard
           colors={colors}
@@ -193,16 +224,25 @@ export default function UpgradeScreen() {
             "CSV export",
           ]}
           ctaLabel={
-            hasEventProEntitlement
+            eventLocallyUnlocked
               ? "Already unlocked"
               : isHostPlus
                 ? "Included with Host Plus"
-                : "Unlock this event"
+                : canClaimForEvent
+                  ? "Use existing unlock"
+                  : "Unlock this event"
           }
           tag="One-time"
-          disabled={eventProDisabled}
+          disabled={eventProDisabled || eventLocallyUnlocked}
           loading={isPending("event_pro")}
-          onPress={() => handleBuy("event_pro")}
+          onPress={() => {
+            if (canClaimForEvent && event) {
+              unlockEvent(event.id);
+              router.back();
+              return;
+            }
+            handleBuy("event_pro");
+          }}
         />
       )}
 

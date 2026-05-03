@@ -4,9 +4,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, Share, Text, View } from "react-native";
 
+import { LockBadge } from "@/components/LockBadge";
 import { Screen } from "@/components/Screen";
 import { Body, Button, Card, EmptyState, Pill, PillTone, Section } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { usePlan } from "@/lib/gating";
 import { csvEscape, formatDateTime, initials, relativeTime } from "@/lib/format";
 import { useInviteStore } from "@/store/InviteStore";
 import { Rsvp, RsvpStatus } from "@/store/types";
@@ -24,6 +26,8 @@ export default function GuestListScreen() {
   const router = useRouter();
   const { state, pushNotification } = useInviteStore();
   const event = state.events.find((e) => e.id === id);
+  const plan = usePlan();
+  const exportUnlocked = id ? plan.isEventUnlocked(id) : false;
 
   const [filter, setFilter] = useState<RsvpStatus | "all">("all");
   const [showCsv, setShowCsv] = useState(false);
@@ -106,17 +110,27 @@ export default function GuestListScreen() {
         </Body>
       </View>
 
-      <View style={{ flexDirection: "row", gap: 8 }}>
+      <View style={{ flexDirection: "row", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <Button label="Message guests" icon="send" onPress={onBulkMessage} />
-        <Button
-          label={showCsv ? "Hide CSV" : "Export CSV"}
-          icon="download"
-          variant="secondary"
-          onPress={() => setShowCsv((v) => !v)}
-        />
+        {exportUnlocked ? (
+          <Button
+            label={showCsv ? "Hide CSV" : "Export CSV"}
+            icon="download"
+            variant="secondary"
+            onPress={() => setShowCsv((v) => !v)}
+          />
+        ) : (
+          <Button
+            label="Export CSV"
+            icon="lock"
+            variant="secondary"
+            onPress={() => router.push(`/upgrade?eventId=${event.id}`)}
+          />
+        )}
+        {!exportUnlocked && <LockBadge eventId={event.id} label="CSV is Premium" />}
       </View>
 
-      {showCsv && (
+      {showCsv && exportUnlocked && (
         <Card>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <Text

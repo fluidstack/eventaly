@@ -66,6 +66,11 @@ export type AppNotification = {
 };
 
 export type Profile = {
+  /**
+   * Stable per-install user id used as RevenueCat appUserID so entitlements
+   * follow the user even if they reinstall and restore.
+   */
+  id: string;
   name: string;
   email: string;
   defaultTemplate: TemplateId;

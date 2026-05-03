@@ -16,7 +16,19 @@ export type Template = {
   accent: string;
   image: ImageSourcePropType;
   copyHints: string[];
+  /** Templates flagged premium are gated behind Event Pro / Host Plus. */
+  premium?: boolean;
 };
+
+export const PREMIUM_TEMPLATE_IDS: TemplateId[] = [
+  "christening",
+  "christmas",
+  "newyear",
+];
+
+export function isPremiumTemplate(id: TemplateId | string | undefined): boolean {
+  return PREMIUM_TEMPLATE_IDS.includes(id as TemplateId);
+}
 
 export const TEMPLATES: Template[] = [
   {
@@ -73,6 +85,7 @@ export const TEMPLATES: Template[] = [
     tagline: "Warm fires & wrapped gifts",
     accent: "#DC2626",
     image: require("../assets/images/template-christmas.png"),
+    premium: true,
     copyHints: [
       "Merry, bright, and a little bit chaotic — come spend Christmas with us.",
       "Mulled wine is on, the tree is up, and your seat at the table is waiting.",
@@ -85,6 +98,7 @@ export const TEMPLATES: Template[] = [
     tagline: "Champagne & midnight kisses",
     accent: "#CA8A04",
     image: require("../assets/images/template-newyear.png"),
+    premium: true,
     copyHints: [
       "One more night of the year — let's send it off in style.",
       "Glitter, champagne, and a countdown together. Join us on NYE.",
@@ -97,6 +111,7 @@ export const TEMPLATES: Template[] = [
     tagline: "A little blessing, a big day",
     accent: "#0EA5E9",
     image: require("../assets/images/template-christening.png"),
+    premium: true,
     copyHints: [
       "Please join us as we celebrate our little one's christening.",
       "A quiet morning of blessings, followed by lunch with the people we love.",

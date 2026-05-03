@@ -10,7 +10,19 @@ export const FREE_LIMITS = {
 
 export type PlanState = {
   isHostPlus: boolean;
+  /**
+   * True when an `event_pro` entitlement is active in RevenueCat but the user
+   * has not yet attached it to a specific event id locally. The user can
+   * "claim" the unlock from the upgrade screen for any locked event. This is
+   * the deterministic mapping path for restored purchases on a fresh install.
+   */
+  hasUnclaimedEventPro: boolean;
   unlockedEventIds: string[];
+  /**
+   * Per-event unlock check. Strictly: Host Plus OR a local unlock for THIS
+   * event id. The bare `event_pro` entitlement is intentionally NOT a global
+   * unlock — it must be claimed for a specific event first.
+   */
   isEventUnlocked: (eventId: string) => boolean;
   remainingFreeEvents: number;
   canCreateEvent: boolean;
@@ -24,12 +36,11 @@ export function usePlan(): PlanState {
   const unlockedEventIds = state.profile.unlockedEventIds ?? [];
 
   return useMemo<PlanState>(() => {
-    // host_plus is configured to also grant the event_pro entitlement.
-    // Either the explicit entitlement or a locally-recorded unlock is fine.
     const isEventUnlocked = (eventId: string) =>
-      isHostPlus ||
-      hasEventProEntitlement ||
-      unlockedEventIds.includes(eventId);
+      isHostPlus || unlockedEventIds.includes(eventId);
+
+    const hasUnclaimedEventPro =
+      hasEventProEntitlement && !isHostPlus && unlockedEventIds.length === 0;
 
     const eventCount = state.events.length;
     const remainingFreeEvents = isHostPlus
@@ -43,12 +54,13 @@ export function usePlan(): PlanState {
     };
 
     const canAddGuest = (eventId: string, currentCount: number) => {
-      if (isHostPlus || unlockedEventIds.includes(eventId)) return true;
+      if (isEventUnlocked(eventId)) return true;
       return currentCount < FREE_LIMITS.guestsPerEvent;
     };
 
     return {
       isHostPlus,
+      hasUnclaimedEventPro,
       unlockedEventIds,
       isEventUnlocked,
       remainingFreeEvents,
@@ -56,5 +68,10 @@ export function usePlan(): PlanState {
       remainingGuests,
       canAddGuest,
     };
-  }, [isHostPlus, hasEventProEntitlement, unlockedEventIds, state.events.length]);
+  }, [
+    isHostPlus,
+    hasEventProEntitlement,
+    unlockedEventIds,
+    state.events.length,
+  ]);
 }

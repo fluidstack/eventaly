@@ -22,6 +22,7 @@ import {
 const STORAGE_KEY = "invitely.state.v1";
 
 const DEFAULT_PROFILE: Profile = {
+  id: "",
   name: "",
   email: "",
   defaultTemplate: "birthday",
@@ -119,7 +120,7 @@ function seedState(): AppState {
   ];
 
   return {
-    profile: { ...DEFAULT_PROFILE },
+    profile: { ...DEFAULT_PROFILE, id: uid() },
     events: [sampleEvent],
     notifications,
   };
@@ -152,6 +153,7 @@ type Ctx = {
   updateSlider: (eventId: string, patch: Partial<Slider>) => void;
   // profile
   updateProfile: (patch: Partial<Profile>) => void;
+  /** Mark an event as unlocked locally after a successful purchase or claim. */
   unlockEvent: (eventId: string) => void;
   completeOnboarding: (name: string, email: string) => void;
   // notifications
@@ -175,6 +177,9 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
           const parsed = JSON.parse(raw) as AppState;
           if (!parsed.profile.unlockedEventIds) {
             parsed.profile.unlockedEventIds = [];
+          }
+          if (!parsed.profile.id) {
+            parsed.profile.id = uid();
           }
           setState(parsed);
         }

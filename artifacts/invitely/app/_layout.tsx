@@ -17,7 +17,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useColors } from "@/hooks/useColors";
 import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
-import { InviteStoreProvider } from "@/store/InviteStore";
+import { InviteStoreProvider, useInviteStore } from "@/store/InviteStore";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -84,14 +84,6 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError]);
 
-  useEffect(() => {
-    try {
-      initializeRevenueCat();
-    } catch (err) {
-      console.warn("RevenueCat init skipped:", err);
-    }
-  }, []);
-
   if (!fontsLoaded && !fontError) return null;
 
   return (
@@ -101,10 +93,12 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <InviteStoreProvider>
-                <SubscriptionProvider>
-                  <StatusBar style="auto" />
-                  <RootLayoutNav />
-                </SubscriptionProvider>
+                <RevenueCatBootstrap>
+                  <SubscriptionProvider>
+                    <StatusBar style="auto" />
+                    <RootLayoutNav />
+                  </SubscriptionProvider>
+                </RevenueCatBootstrap>
               </InviteStoreProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
@@ -112,4 +106,22 @@ export default function RootLayout() {
       </ErrorBoundary>
     </SafeAreaProvider>
   );
+}
+
+/**
+ * Initializes RevenueCat once the persisted profile is loaded, passing the
+ * stable profile id as the appUserID so restored entitlements stick to the
+ * same user.
+ */
+function RevenueCatBootstrap({ children }: { children: React.ReactNode }) {
+  const { state, ready } = useInviteStore();
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      initializeRevenueCat(state.profile.id);
+    } catch (err) {
+      console.warn("RevenueCat init skipped:", err);
+    }
+  }, [ready, state.profile.id]);
+  return <>{children}</>;
 }

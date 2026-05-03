@@ -45,18 +45,35 @@ function getRevenueCatApiKey(): string | undefined {
 }
 
 let configured = false;
+let configuredUserId: string | undefined;
 
-export function initializeRevenueCat() {
-  if (configured) return;
+/**
+ * Initialize RevenueCat. Called once the persisted profile is loaded so we
+ * can pass the stable profile id as `appUserID` — that way entitlements
+ * follow the user across reinstalls/restores.
+ */
+export function initializeRevenueCat(appUserID?: string) {
   const apiKey = getRevenueCatApiKey();
   if (!apiKey) return;
+  if (configured) {
+    if (appUserID && appUserID !== configuredUserId) {
+      try {
+        Purchases.logIn(appUserID);
+        configuredUserId = appUserID;
+      } catch {
+        // ignore in mocked envs
+      }
+    }
+    return;
+  }
   try {
     Purchases.setLogLevel(Purchases.LOG_LEVEL.WARN);
   } catch {
     // ignore in mocked envs
   }
-  Purchases.configure({ apiKey });
+  Purchases.configure(appUserID ? { apiKey, appUserID } : { apiKey });
   configured = true;
+  configuredUserId = appUserID;
 }
 
 export type SubscriptionContextValue = {
