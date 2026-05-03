@@ -58,6 +58,7 @@
   "dependencies": {
     "expo-clipboard": "^55.0.13",
     "expo-image-manipulator": "^55.0.15",
+    "react-native-purchases": "9.7.2",
     "react-native-qrcode-svg": "^6.3.21"
   }
 }
