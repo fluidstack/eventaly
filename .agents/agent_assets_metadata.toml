@@ -1,0 +1,32 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "6S-yeyyVic-Hj62gJmPCK"
+uri = "file://artifacts/invitely/assets/images/icon.png"
+type = "image"
+title = "invitely app icon"
+
+[[generated]]
+id = "1Zm5-TBbPGr_FPkn6HkVD"
+uri = "file://artifacts/invitely/assets/images/template-birthday.png"
+type = "image"
+title = "birthday tablescape"
+
+[[generated]]
+id = "ZwuSvGFBqNjx6Vi7UCEJT"
+uri = "file://artifacts/invitely/assets/images/template-wedding.png"
+type = "image"
+title = "wedding golden hour"
+
+[[generated]]
+id = "2OaDpmrjOMZr79byP6IVb"
+uri = "file://artifacts/invitely/assets/images/template-dinner.png"
+type = "image"
+title = "dinner party cozy"
+
+[[generated]]
+id = "Vmhfb_yc9VMaUhjs1AGj3"
+uri = "file://artifacts/invitely/assets/images/template-baby.png"
+type = "image"
+title = "baby shower pastel"

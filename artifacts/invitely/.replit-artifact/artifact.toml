@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Invitely"
+version = "1.0.0"
+id = "artifacts/invitely"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 21294
+
+[services.development]
+run = "pnpm --filter @workspace/invitely run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/invitely", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/invitely", "run", "serve" ]
+
+[services.env]
+PORT = "21294"
+BASE_PATH = "/"
