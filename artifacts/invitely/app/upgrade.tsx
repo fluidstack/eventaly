@@ -52,7 +52,13 @@ function notifyError(message: string) {
 export default function UpgradeScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
+  const { eventId, tier } = useLocalSearchParams<{
+    eventId?: string;
+    tier?: PlanKey | "host_plus";
+  }>();
+  // Normalize "host_plus" shorthand → yearly (the recommended option).
+  const preselectedTier: PlanKey | undefined =
+    tier === "host_plus" ? "host_plus_yearly" : (tier as PlanKey | undefined);
   const {
     available,
     currentOffering,
@@ -250,6 +256,7 @@ export default function UpgradeScreen() {
       <PlanCard
         colors={colors}
         tone="event"
+        highlighted={preselectedTier === "event_pro"}
         title={PLAN_META.event_pro.title}
         price={priceFor("event_pro")}
         subtitle={
@@ -307,6 +314,7 @@ export default function UpgradeScreen() {
       <PlanCard
         colors={colors}
         tone="primary"
+        highlighted={preselectedTier === "host_plus_yearly"}
         title={PLAN_META.host_plus_yearly.title}
         price={priceFor("host_plus_yearly")}
         subtitle="Two months free vs. monthly. Cancel anytime."
@@ -332,6 +340,7 @@ export default function UpgradeScreen() {
       <PlanCard
         colors={colors}
         tone="muted"
+        highlighted={preselectedTier === "host_plus_monthly"}
         title={PLAN_META.host_plus_monthly.title}
         price={priceFor("host_plus_monthly")}
         subtitle="Flexible monthly billing."
@@ -438,6 +447,7 @@ function PlanCard({
   loading,
   onPress,
   tone,
+  highlighted,
 }: {
   colors: ReturnType<typeof useColors>;
   title: string;
@@ -451,15 +461,20 @@ function PlanCard({
   loading?: boolean;
   onPress: () => void;
   tone: "primary" | "muted" | "event";
+  /** When true, the card is preselected via the ?tier= param: thicker
+   *  primary border + a small "Selected" pill beside the title. */
+  highlighted?: boolean;
 }) {
   const accent =
     tone === "primary" ? colors.primary : tone === "event" ? colors.foreground : colors.border;
+  const borderColor = highlighted ? colors.primary : accent;
+  const borderWidth = highlighted ? 2.5 : 1.5;
   return (
     <View
       style={{
         borderRadius: 18,
-        borderWidth: 1.5,
-        borderColor: accent,
+        borderWidth,
+        borderColor,
         backgroundColor: colors.card,
         padding: 18,
         gap: 14,
@@ -476,6 +491,7 @@ function PlanCard({
         >
           {title}
         </Text>
+        {highlighted && <Pill label="Selected" tone="primary" />}
         {tag && <Pill label={tag} tone="primary" />}
       </View>
       <Text

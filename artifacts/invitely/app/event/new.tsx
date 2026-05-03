@@ -27,7 +27,7 @@ export default function NewEventScreen() {
   // The home tab also gates the entry point, but routes can be hit directly.
   useEffect(() => {
     if (!plan.canCreateEvent) {
-      router.replace("/upgrade");
+      router.replace("/upgrade?tier=host_plus");
     }
   }, [plan.canCreateEvent, router]);
 
@@ -82,7 +82,7 @@ export default function NewEventScreen() {
     // legacy/imported profile could carry as a premium id — never let a free
     // user actually create an event on a paid template.
     if (isPremiumTemplate(templateId) && !plan.isHostPlus) {
-      router.push("/upgrade");
+      router.push("/upgrade?tier=host_plus");
       return;
     }
     const ev = createEvent({
@@ -101,7 +101,7 @@ export default function NewEventScreen() {
 
   const onSwapTemplate = (id: TemplateId) => {
     if (isPremiumTemplate(id) && !plan.isHostPlus) {
-      router.push("/upgrade");
+      router.push("/upgrade?tier=host_plus");
       return;
     }
     setTemplateId(id);

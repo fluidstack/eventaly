@@ -20,7 +20,7 @@ export default function HomeScreen() {
 
   const onCreatePress = () => {
     if (plan.canCreateEvent) router.push("/event/new");
-    else router.push("/upgrade");
+    else router.push("/upgrade?tier=host_plus");
   };
 
   useEffect(() => {

@@ -148,7 +148,7 @@ export default function SettingsScreen() {
                   // a paid template as their default and bypass the new-event
                   // template picker check.
                   if (locked) {
-                    router.push("/upgrade");
+                    router.push("/upgrade?tier=host_plus");
                     return;
                   }
                   updateProfile({ defaultTemplate: t.id });
@@ -262,7 +262,7 @@ export default function SettingsScreen() {
                 label={isHostPlus ? "Manage" : "Upgrade"}
                 size="sm"
                 variant="secondary"
-                onPress={() => router.push("/upgrade")}
+                onPress={() => router.push("/upgrade?tier=host_plus")}
               />
             </View>
             <Button
