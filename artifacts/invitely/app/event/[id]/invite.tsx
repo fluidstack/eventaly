@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Platform, Pressable, Share, Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
@@ -28,7 +29,10 @@ export default function InviteShareScreen() {
     );
   }
 
-  const link = `https://invitely.app/i/${event.id}`;
+  const link = useMemo(
+    () => Linking.createURL(`/event/${event.id}/guest`),
+    [event.id],
+  );
   const shareText = `${state.profile.name?.split(" ")[0] || "I"} invited you to ${event.title} — ${formatDateTime(event.startISO)}\n\n${event.message}\n\nRSVP: ${link}`;
 
   const onCopy = async () => {
@@ -89,7 +93,7 @@ export default function InviteShareScreen() {
     if (Platform.OS === "web") {
       window.open(url, "_blank");
     } else {
-      import("expo-linking").then(({ openURL }) => openURL(url).catch(() => {}));
+      Linking.openURL(url).catch(() => {});
     }
   }
 

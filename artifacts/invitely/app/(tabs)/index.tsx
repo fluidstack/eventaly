@@ -14,13 +14,13 @@ export default function HomeScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state } = useInviteStore();
+  const { state, ready } = useInviteStore();
 
   useEffect(() => {
-    if (!state.profile.onboarded) {
+    if (ready && !state.profile.onboarded) {
       router.replace("/onboarding");
     }
-  }, [state.profile.onboarded, router]);
+  }, [ready, state.profile.onboarded, router]);
 
   const { upcoming, past } = useMemo(() => {
     const now = Date.now();

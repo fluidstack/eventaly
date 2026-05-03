@@ -137,17 +137,19 @@ export function Card({
   );
 }
 
+export type PillTone = "neutral" | "yes" | "no" | "maybe" | "warn" | "primary";
+
 export function Pill({
   label,
   tone = "neutral",
   icon,
 }: {
   label: string;
-  tone?: "neutral" | "yes" | "no" | "maybe" | "warn" | "primary";
+  tone?: PillTone;
   icon?: React.ComponentProps<typeof Feather>["name"];
 }) {
   const colors = useColors();
-  const tones: Record<string, { bg: string; fg: string }> = {
+  const tones: Record<PillTone, { bg: string; fg: string }> = {
     neutral: { bg: colors.muted, fg: colors.foreground },
     yes: { bg: "#DCEFE2", fg: "#1E6B3A" },
     no: { bg: "#F6DCDA", fg: "#9A2E27" },

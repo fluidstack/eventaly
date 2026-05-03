@@ -158,7 +158,11 @@ export default function GuestViewScreen() {
                   { key: "yes", label: "I'm in", icon: "check" },
                   { key: "maybe", label: "Maybe", icon: "help-circle" },
                   { key: "no", label: "Can't make it", icon: "x" },
-                ] as { key: RsvpStatus; label: string; icon: any }[]
+                ] satisfies {
+                  key: RsvpStatus;
+                  label: string;
+                  icon: React.ComponentProps<typeof Feather>["name"];
+                }[]
               ).map((opt) => {
                 const active = status === opt.key;
                 return (

@@ -5,7 +5,7 @@ import React, { useMemo, useState } from "react";
 import { Platform, Pressable, ScrollView, Share, Text, View } from "react-native";
 
 import { Screen } from "@/components/Screen";
-import { Body, Button, Card, EmptyState, Pill, Section } from "@/components/ui";
+import { Body, Button, Card, EmptyState, Pill, PillTone, Section } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { csvEscape, formatDateTime, initials, relativeTime } from "@/lib/format";
 import { useInviteStore } from "@/store/InviteStore";
@@ -244,7 +244,7 @@ export default function GuestListScreen() {
 
 function GuestRow({ r }: { r: Rsvp }) {
   const colors = useColors();
-  const tone =
+  const tone: PillTone =
     r.status === "yes" ? "yes" : r.status === "no" ? "no" : "maybe";
   const label = r.status === "yes" ? "Going" : r.status === "no" ? "Out" : "Maybe";
   return (
@@ -281,7 +281,7 @@ function GuestRow({ r }: { r: Rsvp }) {
             >
               {r.guestName}
             </Text>
-            <Pill label={label} tone={tone as any} />
+            <Pill label={label} tone={tone} />
             {r.plusOne && <Pill label="+1" tone="primary" />}
           </View>
           {r.message ? (
