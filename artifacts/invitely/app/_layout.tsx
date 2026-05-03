@@ -16,7 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useColors } from "@/hooks/useColors";
-import { initializeRevenueCat, SubscriptionProvider, useSubscription } from "@/lib/revenuecat";
+import { SubscriptionProvider, useSubscription } from "@/lib/revenuecat";
 import { InviteStoreProvider, useInviteStore } from "@/store/InviteStore";
 
 SplashScreen.preventAutoHideAsync();
@@ -93,14 +93,12 @@ export default function RootLayout() {
           <GestureHandlerRootView>
             <KeyboardProvider>
               <InviteStoreProvider>
-                <RevenueCatBootstrap>
-                  <SubscriptionProvider>
-                    <EventProClaimsSync>
-                      <StatusBar style="auto" />
-                      <RootLayoutNav />
-                    </EventProClaimsSync>
-                  </SubscriptionProvider>
-                </RevenueCatBootstrap>
+                <RevenueCatGate>
+                  <EventProClaimsSync>
+                    <StatusBar style="auto" />
+                    <RootLayoutNav />
+                  </EventProClaimsSync>
+                </RevenueCatGate>
               </InviteStoreProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
@@ -111,21 +109,18 @@ export default function RootLayout() {
 }
 
 /**
- * Initializes RevenueCat once the persisted profile is loaded, passing the
- * stable profile id as the appUserID so restored entitlements stick to the
- * same user.
+ * Hands the persisted profile id + readiness to SubscriptionProvider so it
+ * can call Purchases.configure() BEFORE enabling any RC-backed queries.
+ * This eliminates the bootstrap race where customerInfo/offerings would be
+ * requested before configure() had completed.
  */
-function RevenueCatBootstrap({ children }: { children: React.ReactNode }) {
+function RevenueCatGate({ children }: { children: React.ReactNode }) {
   const { state, ready } = useInviteStore();
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      initializeRevenueCat(state.profile.id);
-    } catch (err) {
-      console.warn("RevenueCat init skipped:", err);
-    }
-  }, [ready, state.profile.id]);
-  return <>{children}</>;
+  return (
+    <SubscriptionProvider appUserID={state.profile.id} profileReady={ready}>
+      {children}
+    </SubscriptionProvider>
+  );
 }
 
 /**

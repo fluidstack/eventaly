@@ -36,9 +36,20 @@ export default function SliderScreen() {
 
   const [playing, setPlaying] = useState(false);
 
-  if (!event) return null;
+  // Hard-gate the slider route. If the event isn't unlocked, redirect to
+  // /upgrade so locked users can never reach the composer (matches the
+  // upload/moderation route gating).
+  const eventId = event?.id;
+  const unlocked = eventId ? plan.isEventUnlocked(eventId) : false;
+  useEffect(() => {
+    if (!eventId) return;
+    if (!unlocked) {
+      router.replace(`/upgrade?eventId=${eventId}`);
+    }
+  }, [eventId, unlocked, router]);
 
-  const unlocked = plan.isEventUnlocked(event.id);
+  if (!event) return null;
+  if (!unlocked) return null;
 
   const approved = event.uploads.filter((u) => u.status === "approved");
   const orderedIds =

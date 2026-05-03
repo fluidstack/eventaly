@@ -131,32 +131,15 @@ export default function UpgradeScreen() {
     }
     setPendingKey(key);
     try {
-      const info = await purchase(pkg, { eventId: eventId ?? undefined });
+      const { info, newTransactionId } = await purchase(pkg, {
+        eventId: eventId ?? undefined,
+        existingClaims: state.profile.eventProClaims ?? [],
+      });
       const meta = PLAN_META[key];
       const grantedEventPro = Boolean(info?.entitlements?.active?.event_pro);
       const grantedHostPlus = Boolean(info?.entitlements?.active?.host_plus);
       if (meta.entitlement === "event_pro" && grantedEventPro && eventId) {
-        // Bind this fresh purchase to the eventId via its RC transaction id
-        // so refunds prune the unlock and the same purchase can't be reused.
-        const txnId = (() => {
-          const txns = info?.nonSubscriptionTransactions ?? [];
-          const claimedIds = new Set(
-            (state.profile.eventProClaims ?? []).map((c) => c.transactionId),
-          );
-          const fresh = txns
-            .filter(
-              (t) =>
-                (t.productIdentifier ?? "").toLowerCase().includes("event_pro") &&
-                !claimedIds.has(t.transactionIdentifier),
-            )
-            .sort(
-              (a, b) =>
-                new Date(b.purchaseDate).getTime() -
-                new Date(a.purchaseDate).getTime(),
-            );
-          return fresh[0]?.transactionIdentifier;
-        })();
-        unlockEvent(eventId, txnId);
+        unlockEvent(eventId, newTransactionId);
       }
       if (grantedHostPlus || grantedEventPro) {
         if (Platform.OS !== "web") {
