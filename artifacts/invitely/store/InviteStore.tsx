@@ -145,6 +145,17 @@ type Ctx = {
   getEvent: (id: string) => Event | undefined;
   // rsvp
   upsertRsvp: (eventId: string, rsvp: Omit<Rsvp, "id" | "createdAt">) => void;
+  /**
+   * Merge RSVPs pulled from the api-server (web-submitted) into local
+   * state. Existing local RSVPs (matched by lowercased guest name) are
+   * updated in place; new ones are prepended. `latestCreatedAt` becomes
+   * the new `lastRsvpSyncAt` cursor.
+   */
+  mergeRemoteRsvps: (
+    eventId: string,
+    incoming: Array<Omit<Rsvp, "id"> & { id?: string }>,
+    latestCreatedAt?: string,
+  ) => number;
   // uploads
   addUpload: (
     eventId: string,
@@ -222,6 +233,8 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
                 preset: "fade",
                 orderedUploadIds: [],
               },
+              publishToken: e.publishToken ?? `${uid()}${uid()}`,
+              inviteToken: e.inviteToken ?? `${uid()}${uid()}`,
             })),
             notifications: parsed.notifications ?? [],
           };
@@ -274,6 +287,8 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
           invited: [],
           slider: { published: false, preset: "fade", orderedUploadIds: [] },
           createdAt: new Date().toISOString(),
+          publishToken: uid() + uid(),
+          inviteToken: uid() + uid(),
         };
         setState((s) => ({ ...s, events: [ev, ...s.events] }));
         return ev;
@@ -514,6 +529,44 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
           ...s,
           notifications: s.notifications.map((n) => ({ ...n, read: true })),
         }));
+      },
+      mergeRemoteRsvps: (eventId, incoming, latestCreatedAt) => {
+        let added = 0;
+        setState((s) => ({
+          ...s,
+          events: s.events.map((e) => {
+            if (e.id !== eventId) return e;
+            const next = [...e.rsvps];
+            for (const r of incoming) {
+              const idx = next.findIndex(
+                (x) =>
+                  x.guestName.trim().toLowerCase() ===
+                  r.guestName.trim().toLowerCase(),
+              );
+              const merged = {
+                id: r.id || uid(),
+                guestName: r.guestName,
+                status: r.status,
+                message: r.message,
+                plusOne: !!r.plusOne,
+                dietary: r.dietary,
+                createdAt: r.createdAt,
+              };
+              if (idx >= 0) {
+                next[idx] = { ...next[idx], ...merged, id: next[idx].id };
+              } else {
+                next.unshift(merged);
+                added++;
+              }
+            }
+            return {
+              ...e,
+              rsvps: next,
+              lastRsvpSyncAt: latestCreatedAt ?? e.lastRsvpSyncAt,
+            };
+          }),
+        }));
+        return added;
       },
       pushNotification,
       recordInvitedContacts: (eventId, contacts, channel) => {

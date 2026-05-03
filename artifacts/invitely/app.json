@@ -14,9 +14,23 @@
       "backgroundColor": "#0B0B12"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.invitely.app",
+      "associatedDomains": ["applinks:invitely.replit.app"]
     },
-    "android": {},
+    "android": {
+      "package": "com.invitely.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "invitely.replit.app", "pathPrefix": "/e/" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -24,7 +38,7 @@
       [
         "expo-router",
         {
-          "origin": "https://replit.com/"
+          "origin": "https://invitely.replit.app/"
         }
       ],
       "expo-font",

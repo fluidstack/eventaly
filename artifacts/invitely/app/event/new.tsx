@@ -26,6 +26,7 @@ import { useColors } from "@/hooks/useColors";
 import { usePlan } from "@/lib/gating";
 import { HeroFilterId, getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
+import { publishEventRemote } from "@/lib/sync";
 
 export default function NewEventScreen() {
   const colors = useColors();
@@ -192,6 +193,7 @@ export default function NewEventScreen() {
       privacy,
       allowGuestUploads,
     });
+    publishEventRemote(ev, state.profile.name).catch(() => {});
     router.replace(`/event/${ev.id}`);
   };
 

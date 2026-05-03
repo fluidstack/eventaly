@@ -26,6 +26,7 @@ import { useColors } from "@/hooks/useColors";
 import { usePlan } from "@/lib/gating";
 import { HeroFilterId, getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
+import { publishEventRemote } from "@/lib/sync";
 
 export default function EditEventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -141,7 +142,7 @@ export default function EditEventScreen() {
       const dt = new Date(`${date}T${time}:00`);
       if (!isNaN(dt.getTime())) startISO = dt.toISOString();
     } catch {}
-    updateEvent(event.id, {
+    const patch = {
       title: title.trim() || event.title,
       templateId,
       heroPhotoUri,
@@ -154,7 +155,9 @@ export default function EditEventScreen() {
       message: message.trim(),
       location: location.trim(),
       startISO,
-    });
+    };
+    updateEvent(event.id, patch);
+    publishEventRemote({ ...event, ...patch }, state.profile.name).catch(() => {});
     router.back();
   };
 

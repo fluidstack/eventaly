@@ -15,6 +15,7 @@ import { usePlan } from "@/lib/gating";
 import { formatDate, formatTime, initials, relativeTime } from "@/lib/format";
 import { getHeroFilter } from "@/lib/heroFilters";
 import { useInviteStore } from "@/store/InviteStore";
+import { useRsvpSync } from "@/lib/useRsvpSync";
 
 export default function EventDashboard() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +27,7 @@ export default function EventDashboard() {
 
   const event = state.events.find((e) => e.id === id);
   const unlocked = id ? plan.isEventUnlocked(id) : false;
+  useRsvpSync(event);
 
   if (!event) {
     return (

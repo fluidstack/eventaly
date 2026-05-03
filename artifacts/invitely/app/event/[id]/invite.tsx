@@ -12,6 +12,7 @@ import { Body, Button, Card, EmptyState, H2, Pill, Section } from "@/components/
 import { useColors } from "@/hooks/useColors";
 import { formatDateTime } from "@/lib/format";
 import { buildInviteMessage } from "@/lib/inviteText";
+import { getInviteUrl } from "@/lib/inviteLink";
 import { useInviteStore } from "@/store/InviteStore";
 
 export default function InviteShareScreen() {
@@ -30,10 +31,7 @@ export default function InviteShareScreen() {
     );
   }
 
-  const link = useMemo(
-    () => Linking.createURL(`/event/${event.id}/guest`),
-    [event.id],
-  );
+  const link = useMemo(() => getInviteUrl(event), [event.id, event.privacy, event.inviteToken]);
   const shareText = buildInviteMessage({
     hostName: state.profile.name,
     eventTitle: event.title,

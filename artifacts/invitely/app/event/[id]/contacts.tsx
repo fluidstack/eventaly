@@ -19,6 +19,7 @@ import { useColors } from "@/hooks/useColors";
 import { DeviceContact, useContacts } from "@/hooks/useContacts";
 import { initials } from "@/lib/format";
 import { buildInviteMessage, firstNameOf } from "@/lib/inviteText";
+import { getInviteUrl } from "@/lib/inviteLink";
 import { useInviteStore } from "@/store/InviteStore";
 import { InviteChannel } from "@/store/types";
 
@@ -50,8 +51,8 @@ export default function ContactsPickerScreen() {
   const [channel, setChannel] = useState<InviteChannel>("sms");
 
   const link = useMemo(
-    () => (event ? Linking.createURL(`/event/${event.id}/guest`) : ""),
-    [event],
+    () => (event ? getInviteUrl(event) : ""),
+    [event?.id, event?.privacy, event?.inviteToken],
   );
 
   const filtered = useMemo(() => {

@@ -86,6 +86,24 @@ export type Event = {
    * event quota so a new user can still create their own first event.
    */
   isSample?: boolean;
+  /**
+   * Per-event secret used as the bearer between the host's mobile install
+   * and the api-server's /events/:id endpoints. Generated on first publish
+   * and persisted with the event so subsequent edits and RSVP pulls
+   * authenticate as the same owner.
+   */
+  publishToken?: string;
+  /**
+   * For invite-only events, an additional unguessable token included in the
+   * shareable URL (?t=...). The web RSVP page and POST /rsvps both require
+   * it to match.
+   */
+  inviteToken?: string;
+  /**
+   * ISO timestamp of the most recent successful RSVP pull from the server,
+   * used as the `?since=` cursor for incremental syncs.
+   */
+  lastRsvpSyncAt?: string;
 };
 
 export type AppNotification = {
