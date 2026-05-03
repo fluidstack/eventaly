@@ -115,10 +115,9 @@ export async function submitPublicRsvp(
 ): Promise<{ ok: boolean; error?: string }> {
   const base = getApiBase();
   if (!base) return { ok: false, error: "no_host" };
-  const url = new URL(`${base}/events/${encodeURIComponent(id)}/rsvps`);
-  if (payload.inviteToken) url.searchParams.set("t", payload.inviteToken);
+  const url = `${base}/events/${encodeURIComponent(id)}/rsvps`;
   try {
-    const res = await fetch(url.toString(), {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -127,6 +126,7 @@ export async function submitPublicRsvp(
         message: payload.message,
         plusOne: !!payload.plusOne,
         dietary: payload.dietary,
+        inviteToken: payload.inviteToken || undefined,
       }),
     });
     if (!res.ok) return { ok: false, error: `http_${res.status}` };
