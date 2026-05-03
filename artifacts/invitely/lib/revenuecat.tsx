@@ -51,10 +51,16 @@ export function getEventProPurchaseCount(info: CustomerInfo | undefined): number
 }
 
 function getRevenueCatApiKey(): string | undefined {
-  // The web build can't purchase via App/Play Store and our keys are mobile-only,
-  // so skip configuration entirely on web. The app still renders an "available
-  // in mobile" notice on the upgrade screen.
+  // Web has no native store integration; skip RC entirely.
   if (Platform.OS === "web") return undefined;
+
+  // Expo Go cannot load the native Purchases module — calling configure()
+  // there throws "Invalid API key. The native store is not available when
+  // running inside Expo Go". Skip configuration; the upgrade screen renders
+  // a "build a development client to test purchases" notice via `available`.
+  // A real RC Test Store key (prefix `test_`) would work, but our currently
+  // provisioned TEST_API_KEY is just a duplicate of the iOS App Store key.
+  if (Constants.executionEnvironment === "storeClient") return undefined;
 
   if (
     !REVENUECAT_TEST_API_KEY &&
@@ -64,12 +70,8 @@ function getRevenueCatApiKey(): string | undefined {
     return undefined;
   }
 
-  if (__DEV__ || Constants.executionEnvironment === "storeClient") {
-    return REVENUECAT_TEST_API_KEY ?? REVENUECAT_IOS_API_KEY ?? REVENUECAT_ANDROID_API_KEY;
-  }
-
-  if (Platform.OS === "ios") return REVENUECAT_IOS_API_KEY;
-  if (Platform.OS === "android") return REVENUECAT_ANDROID_API_KEY;
+  if (Platform.OS === "ios") return REVENUECAT_IOS_API_KEY ?? REVENUECAT_TEST_API_KEY;
+  if (Platform.OS === "android") return REVENUECAT_ANDROID_API_KEY ?? REVENUECAT_TEST_API_KEY;
   return REVENUECAT_TEST_API_KEY;
 }
 
@@ -100,9 +102,16 @@ export function initializeRevenueCat(appUserID?: string) {
   } catch (err) {
     console.warn("[RevenueCat] setLogLevel failed", err);
   }
-  Purchases.configure(appUserID ? { apiKey, appUserID } : { apiKey });
-  configured = true;
-  configuredUserId = appUserID;
+  try {
+    Purchases.configure(appUserID ? { apiKey, appUserID } : { apiKey });
+    configured = true;
+    configuredUserId = appUserID;
+  } catch (err) {
+    // Native module unavailable (e.g. Expo Go without dev client). Leave
+    // `configured` false so the app falls back to the "purchases unavailable"
+    // notice instead of crashing on every render.
+    console.warn("[RevenueCat] configure failed", err);
+  }
 }
 
 export type SubscriptionContextValue = {
