@@ -349,7 +349,10 @@ async function seed() {
     [ENTITLEMENT_EVENT_PRO]: [],
     [ENTITLEMENT_HOST_PLUS]: [],
   };
-  const planAppleProductIds: Record<string, string> = {};
+  // Per-package: the product ids for BOTH stores. Both must be attached to
+  // the package so iOS and Android each resolve a purchasable product when
+  // RC builds the offering for the device's platform.
+  const planProductIds: Record<string, string[]> = {};
 
   for (const plan of PLANS) {
     const aProd = await ensureProduct(
@@ -368,7 +371,7 @@ async function seed() {
       plan,
       existingProducts?.items ?? [],
     );
-    planAppleProductIds[plan.packageIdentifier] = aProd.id;
+    planProductIds[plan.packageIdentifier] = [aProd.id, pProd.id];
     entitlementToProductIds[plan.entitlement].push(aProd.id, pProd.id);
     if (plan.entitlement === ENTITLEMENT_HOST_PLUS) {
       entitlementToProductIds[ENTITLEMENT_EVENT_PRO].push(aProd.id, pProd.id);
@@ -407,10 +410,13 @@ async function seed() {
       plan,
       existingPackages?.items ?? [],
     );
-    const aProdId = planAppleProductIds[plan.packageIdentifier];
-    if (aProdId) {
-      await attachToPackage(client, project.id, pkg.id, [aProdId]);
+    const productIds = planProductIds[plan.packageIdentifier] ?? [];
+    if (productIds.length !== 2) {
+      throw new Error(
+        `Package ${plan.packageIdentifier} expected both iOS+Android product ids, got ${productIds.length}.`,
+      );
     }
+    await attachToPackage(client, project.id, pkg.id, productIds);
   }
 
   const [{ data: appKeys }, { data: playKeys }] = await Promise.all([

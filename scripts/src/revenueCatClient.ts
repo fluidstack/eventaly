@@ -15,7 +15,8 @@ async function getApiKey(): Promise<string> {
   if (
     connectionSettings &&
     connectionSettings.settings.expires_at &&
-    new Date(connectionSettings.settings.expires_at).getTime() > Date.now()
+    new Date(connectionSettings.settings.expires_at).getTime() > Date.now() &&
+    connectionSettings.settings.access_token
   ) {
     return connectionSettings.settings.access_token;
   }
@@ -42,7 +43,7 @@ async function getApiKey(): Promise<string> {
       },
     },
   )
-    .then((res) => res.json())
+    .then((res) => res.json() as Promise<{ items?: ConnectionSettings[] }>)
     .then((data) => data.items?.[0]);
 
   const accessToken =

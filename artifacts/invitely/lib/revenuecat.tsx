@@ -29,25 +29,12 @@ export const PACKAGE_EVENT_PRO = "event_pro";
 export const PACKAGE_HOST_PLUS_MONTHLY = "$rc_monthly";
 export const PACKAGE_HOST_PLUS_YEARLY = "$rc_annual";
 
-/**
- * Subscriber attribute key we set when purchasing Event Pro so the chosen
- * event id is durably attached to the purchase on RevenueCat's side. This is
- * the source of truth for restoring per-event unlocks on a fresh install.
- */
+// Subscriber attribute: last event id bound to an Event Pro purchase.
 export const ATTR_EVENT_PRO_LAST_EVENT = "$invitelyEventProLastEventId";
 
-/**
- * Subscriber attribute storing the full `eventProClaims` mapping
- * (transactionId -> eventId) as a JSON string. This is the durable
- * cross-install source of truth for which Event Pro purchase unlocks which
- * event. On launch we read this, merge it into the local profile, and union
- * the resulting eventIds into `unlockedEventIds`.
- *
- * RC subscriber attributes are limited to ~1000 chars per value; we only
- * need 32-byte txnIds + short event uuids so this comfortably fits dozens of
- * purchases. If we ever bump up against the limit we'll move to per-txn
- * attributes keyed by transactionId.
- */
+// Subscriber attribute: full transactionId -> eventId mapping (JSON).
+// Written on every purchase; serves as a durable backup for server-side
+// readers / future support tooling.
 export const ATTR_EVENT_PRO_CLAIMS = "$invitelyEventProClaims";
 
 /**
@@ -102,16 +89,16 @@ export function initializeRevenueCat(appUserID?: string) {
       try {
         Purchases.logIn(appUserID);
         configuredUserId = appUserID;
-      } catch {
-        // ignore in mocked envs
+      } catch (err) {
+        console.warn("[RevenueCat] logIn failed", err);
       }
     }
     return;
   }
   try {
     Purchases.setLogLevel(Purchases.LOG_LEVEL.WARN);
-  } catch {
-    // ignore in mocked envs
+  } catch (err) {
+    console.warn("[RevenueCat] setLogLevel failed", err);
   }
   Purchases.configure(appUserID ? { apiKey, appUserID } : { apiKey });
   configured = true;
@@ -183,18 +170,18 @@ function useSubscriptionContext(appUserID: string | undefined, profileReady: boo
       eventId?: string;
       existingClaims?: EventProClaim[];
     }) => {
-      // Persist event-id mapping on the RC subscriber profile BEFORE the
-      // purchase so it's durably attached to this purchaser.
+      // Bind eventId to the RC subscriber profile before purchase so the
+      // mapping is attached even if our local store fails to persist.
       if (eventId) {
         try {
           await Purchases.setAttributes({ [ATTR_EVENT_PRO_LAST_EVENT]: eventId });
-        } catch {
-          // ignore in mocked envs
+        } catch (err) {
+          console.warn("[RevenueCat] setAttributes(last event) failed", err);
         }
       }
+
       // Snapshot pre-purchase Event Pro txn ids so we can identify the EXACT
-      // newly-issued transaction id after purchasePackage resolves (instead
-      // of a "first unbound" heuristic).
+      // newly-issued transactionId after purchasePackage resolves.
       let preTxnIds = new Set<string>();
       try {
         const before = await Purchases.getCustomerInfo();
@@ -205,62 +192,55 @@ function useSubscriptionContext(appUserID: string | undefined, profileReady: boo
             )
             .map((t) => t.transactionIdentifier),
         );
-      } catch {
-        // ignore in mocked envs
+      } catch (err) {
+        console.warn("[RevenueCat] pre-purchase snapshot failed", err);
       }
 
       const result = await Purchases.purchasePackage(pkg);
 
       let newTransactionId: string | undefined;
       if (eventId) {
-        try {
-          const txns = result.customerInfo?.nonSubscriptionTransactions ?? [];
-          const postEventProTxns = txns.filter((t) =>
-            (t.productIdentifier ?? "").toLowerCase().includes("event_pro"),
+        const txns = result.customerInfo?.nonSubscriptionTransactions ?? [];
+        const postEventProTxns = txns.filter((t) =>
+          (t.productIdentifier ?? "").toLowerCase().includes("event_pro"),
+        );
+        const postTxnIdSet = new Set(
+          postEventProTxns.map((t) => t.transactionIdentifier),
+        );
+        const claimedIds = new Set(
+          (existingClaims ?? []).map((c) => c.transactionId),
+        );
+        const diffed = postEventProTxns
+          .filter((t) => !preTxnIds.has(t.transactionIdentifier))
+          .sort(
+            (a, b) =>
+              new Date(b.purchaseDate).getTime() -
+              new Date(a.purchaseDate).getTime(),
           );
-          const postTxnIdSet = new Set(
-            postEventProTxns.map((t) => t.transactionIdentifier),
+        const fallbackUnbound = postEventProTxns
+          .filter((t) => !claimedIds.has(t.transactionIdentifier))
+          .sort(
+            (a, b) =>
+              new Date(b.purchaseDate).getTime() -
+              new Date(a.purchaseDate).getTime(),
           );
-          // Exact diff: the new txn is the post-set entry that wasn't there
-          // before. Falls back to the latest unbound-by-existingClaims txn
-          // if the diff is empty (e.g. stub envs).
-          const claimedIds = new Set(
-            (existingClaims ?? []).map((c) => c.transactionId),
-          );
-          const diffed = postEventProTxns
-            .filter((t) => !preTxnIds.has(t.transactionIdentifier))
-            .sort(
-              (a, b) =>
-                new Date(b.purchaseDate).getTime() -
-                new Date(a.purchaseDate).getTime(),
-            );
-          const fallbackUnbound = postEventProTxns
-            .filter((t) => !claimedIds.has(t.transactionIdentifier))
-            .sort(
-              (a, b) =>
-                new Date(b.purchaseDate).getTime() -
-                new Date(a.purchaseDate).getTime(),
-            );
-          newTransactionId =
-            diffed[0]?.transactionIdentifier ??
-            fallbackUnbound[0]?.transactionIdentifier;
+        newTransactionId =
+          diffed[0]?.transactionIdentifier ??
+          fallbackUnbound[0]?.transactionIdentifier;
 
-          // Use the caller-supplied LOCAL persisted claims as the durable
-          // baseline (cross-session) since the RN SDK doesn't expose a read
-          // for subscriber attributes. Append the new txn->event mapping and
-          // write the FULL mapping back to RC.
-          const merged = mergeEventProClaims(
-            existingClaims ?? [],
-            postTxnIdSet,
-            newTransactionId
-              ? { transactionId: newTransactionId, eventId }
-              : { eventId },
-          );
+        const merged = mergeEventProClaims(
+          existingClaims ?? [],
+          postTxnIdSet,
+          newTransactionId
+            ? { transactionId: newTransactionId, eventId }
+            : { eventId },
+        );
+        try {
           await Purchases.setAttributes({
             [ATTR_EVENT_PRO_CLAIMS]: JSON.stringify(merged),
           });
-        } catch {
-          // ignore in mocked envs
+        } catch (err) {
+          console.warn("[RevenueCat] setAttributes(claims) failed", err);
         }
       }
 
@@ -338,29 +318,15 @@ export function SubscriptionProvider({
 
 export type EventProClaim = { transactionId: string; eventId: string };
 
-/**
- * RESTORE / REHYDRATION MODEL (read this before changing).
- *
- * Source of truth for per-event Event Pro unlocks WITHIN an install is the
- * local AsyncStorage-persisted `Profile.eventProClaims` (transactionId ->
- * eventId). It survives app restart, is rehydrated on InviteStoreProvider
- * boot, and is fed back into RC writes so the durable subscriber attribute
- * `ATTR_EVENT_PRO_CLAIMS` always carries the FULL history (used by future
- * server-side readers; the RN Purchases SDK has no getAttributes()).
- *
- * Cross-install / new-device recovery uses the deterministic delta between
- * RevenueCat's `nonSubscriptionTransactions` count (lifetime Event Pro
- * purchases for this appUserID) and the local `eventProClaims` length. Any
- * un-attributed purchases surface as "unclaimed credits" in /upgrade and
- * the user maps them to a specific event via the manual claim banner.
- * This is the supported model for App Store / Play Store CONSUMABLE
- * products — the stores don't auto-restore consumables and don't carry
- * arbitrary client metadata into a fresh install.
- *
- * Refund safety: `EventProClaimsSync` watches customerInfo and prunes any
- * local claim whose transactionId no longer appears in
- * nonSubscriptionTransactions; the cascade also drops the matching unlock.
- */
+// Per-event unlock model for Event Pro (a CONSUMABLE product per the task
+// spec: "$12 consumable per-event"). Within an install, the persisted
+// `Profile.eventProClaims` (transactionId -> eventId) is the source of truth
+// and is rehydrated from AsyncStorage on boot. On a fresh install RC will
+// auto-restore the lifetime nonSubscriptionTransactions; the delta between
+// that count and local claims surfaces as "unclaimed credits" the user maps
+// to specific events via the /upgrade manual-claim banner. Refunds are
+// handled by EventProClaimsSync, which prunes claims whose transactionIds
+// no longer appear in nonSubscriptionTransactions.
 function mergeEventProClaims(
   existing: EventProClaim[],
   validTxnIds: Set<string>,
