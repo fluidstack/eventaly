@@ -1,0 +1,121 @@
+Invitely is a mobile‑first invitation and event gallery app that lets hosts create customizable photo invitations, send them via phone contacts or shareable links, collect one‑tap RSVPs with short messages, schedule calendar entries and reminders, accept guest photo uploads with moderation, and publish a curated post‑event photo slider “thank you.” The product emphasizes privacy, low friction for guests, and AI assistance for copy, template selection, moderation, and timing optimization.
+
+Functional Requirements
+Module	Primary Features	Key Actions
+Authentication	Email/phone sign up; social sign in; guest token access	Sign up; verify phone/email; generate guest link token
+Host Profile	Profile, payment settings, default preferences	Edit profile; set default templates; manage billing
+Invitation Builder	Photo templates; text editor; date/time; location; privacy	Create invite; upload hero photo; save template
+Delivery & Sharing	Contact import opt‑in; SMS/WhatsApp share; link; QR code	Import contacts; send SMS; copy link; generate QR
+RSVP System	Yes/No/Maybe; short message; plus‑one; dietary	Submit RSVP; edit RSVP; host view list
+Calendar Integration	iCal export; add to Google/Apple calendar; reminders	Generate .ics; schedule push/SMS reminders
+Guest Photo Uploads	Take/upload photos; captions; consent; offline queue	Upload photo; view status; delete within grace period
+Moderation	Automated CV checks; human review queue; reporting	Auto‑flag; host approve/reject; report image
+Host Dashboard	Guest list; export CSV; message guests; edit invite	View RSVPs; export; bulk message; edit invite
+Post Event Slider	Select photos; order; presets; publish; download	Compose slider; preview; publish; send link
+Notifications	Push, SMS, email for invites, reminders, uploads	Send reminders; notify upload status; slider published
+Payments	Premium templates; creator payouts; subscriptions	Purchase template; manage subscription; payouts
+Analytics	Invite opens; RSVP rate; reminder CTR; uploads	Track metrics per event; export reports
+Admin Console	User management; moderation tools; logs	Manage users; review flagged content; audit logs
+
+
+Non‑Functional Requirements and Security
+Privacy: Explicit opt‑in for contact access; strip GPS EXIF by default; minimal contact storage; consent logging with timestamp.
+
+Compliance: GDPR, COPPA considerations; parental consent flows for minors; data subject request handling.
+
+Availability: 99.9% for core APIs; graceful degradation for non‑critical features.
+
+Performance: Invite page load <2s on 4G; image delivery via CDN.
+
+Scalability: Serverless autoscaling for notification spikes; horizontal scaling for API servers.
+
+Security: TLS everywhere; signed upload URLs; rate limits; virus scanning; role‑based access control.
+
+Retention: Default photo retention 2 years; host controls deletion; export and takedown processes.
+
+Localization: Multi‑language support for UI and AI copy generation.
+
+Data Model and API Contracts
+Core entities: User, Event, Invite, Guest, RSVP, Upload, Slider, Template, Notification.
+
+Representative API endpoints
+
+POST /auth/signup — create user.
+
+POST /events — create event with template and heroPhotoUrl.
+
+GET /events/{id}/invite — public invite page data.
+
+POST /events/{id}/share — send invite via channel; requires contactPermission.
+
+POST /events/{id}/rsvp — submit RSVP with rsvpStatus and rsvpNote.
+
+POST /events/{id}/uploads — multipart upload; returns uploadId and status.
+
+GET /events/{id}/uploads — list uploads with filters.
+
+PATCH /events/{id}/uploads/{uploadId} — host approve/reject/edit caption.
+
+POST /events/{id}/slider — create/publish slider with ordered photo IDs.
+
+GET /users/{id}/events — host event list and metrics.
+
+API design rules
+
+Use RESTful JSON; include pagination and filtering; return clear error codes; require auth tokens for protected endpoints; use short‑lived signed URLs for direct uploads.
+
+UX Flows and Screen List
+High level flows
+
+Create Invite: Host → choose template → upload hero photo → set date/time/location → enable guest uploads → save & share.
+
+Guest RSVP: Open link → view invite → tap RSVP → choose Yes/No/Maybe → add short message → add to calendar.
+
+Guest Upload: Open event page → Upload Photos → take or choose photo → add caption → consent → upload queued → status shown.
+
+Host Curation: Dashboard → Event Gallery → filter pending → approve/reject → assemble slider → publish.
+
+Post Event: Host publishes slider → attendees notified → view/download slider.
+
+Screen list
+
+Onboarding / Auth screens
+
+Home / My Events
+
+Create/Edit Event (template editor)
+
+Invite Preview (share options)
+
+Public Invite Page (web + in‑app)
+
+RSVP Modal
+
+Upload Modal and My Uploads
+
+Host Gallery and Moderation Queue
+
+Slider Composer and Preview
+
+Notifications Center
+
+Settings and Billing
+
+AI Features and Requirements
+Invite Copy Generator: short SMS and email variants; tone selection; editable suggestions.
+
+Template Recommender: suggests templates based on event type and guest demographics.
+
+Timing Optimizer: predicts best send times per guest segment.
+
+Image Moderation: CV models for nudity, violence, offensive symbols; quality scoring and auto‑crop suggestions.
+
+Auto‑Enhance: optional one‑tap photo enhancement and auto‑crop for hero images.
+
+RSVP Prediction: no‑show risk scoring to recommend reminder cadence.
+
+AI Assistant: chat helper for hosts to plan event copy, checklist, and vendor suggestions.
+
+AI governance
+
+Explicit opt‑in for model training; anonymize data; provide explainability for suggestions; human review for moderation flags; monitoring for model drift and fairness.
