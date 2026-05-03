@@ -16,7 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useColors } from "@/hooks/useColors";
-import { initializeRevenueCat, SubscriptionProvider } from "@/lib/revenuecat";
+import { initializeRevenueCat, SubscriptionProvider, useSubscription } from "@/lib/revenuecat";
 import { InviteStoreProvider, useInviteStore } from "@/store/InviteStore";
 
 SplashScreen.preventAutoHideAsync();
@@ -95,8 +95,10 @@ export default function RootLayout() {
               <InviteStoreProvider>
                 <RevenueCatBootstrap>
                   <SubscriptionProvider>
-                    <StatusBar style="auto" />
-                    <RootLayoutNav />
+                    <EventProClaimsSync>
+                      <StatusBar style="auto" />
+                      <RootLayoutNav />
+                    </EventProClaimsSync>
                   </SubscriptionProvider>
                 </RevenueCatBootstrap>
               </InviteStoreProvider>
@@ -123,5 +125,26 @@ function RevenueCatBootstrap({ children }: { children: React.ReactNode }) {
       console.warn("RevenueCat init skipped:", err);
     }
   }, [ready, state.profile.id]);
+  return <>{children}</>;
+}
+
+/**
+ * Whenever RevenueCat customer info refreshes, prune any local Event Pro
+ * claims whose source transaction has disappeared (refunded/voided). This
+ * also cascades into removing the matching unlocks from `unlockedEventIds`
+ * so refunded purchases can't keep features unlocked forever.
+ */
+function EventProClaimsSync({ children }: { children: React.ReactNode }) {
+  const { customerInfo } = useSubscription();
+  const { syncEventProClaims } = useInviteStore();
+  useEffect(() => {
+    if (!customerInfo) return;
+    const validIds = (customerInfo.nonSubscriptionTransactions ?? [])
+      .filter((t) =>
+        (t.productIdentifier ?? "").toLowerCase().includes("event_pro"),
+      )
+      .map((t) => t.transactionIdentifier);
+    syncEventProClaims(validIds);
+  }, [customerInfo, syncEventProClaims]);
   return <>{children}</>;
 }

@@ -31,6 +31,7 @@ const DEFAULT_PROFILE: Profile = {
   language: "en",
   billingPlan: "free",
   unlockedEventIds: [],
+  eventProClaims: [],
 };
 
 function seedState(): AppState {
@@ -154,7 +155,13 @@ type Ctx = {
   // profile
   updateProfile: (patch: Partial<Profile>) => void;
   /** Mark an event as unlocked locally after a successful purchase or claim. */
-  unlockEvent: (eventId: string) => void;
+  unlockEvent: (eventId: string, transactionId?: string) => void;
+  /**
+   * Drop any local Event Pro claims whose RC transactionIdentifier no longer
+   * appears in `validTransactionIds` (e.g. refunded). The corresponding
+   * eventId is also removed from `unlockedEventIds`.
+   */
+  syncEventProClaims: (validTransactionIds: string[]) => void;
   completeOnboarding: (name: string, email: string) => void;
   // notifications
   markAllRead: () => void;
@@ -177,6 +184,9 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
           const parsed = JSON.parse(raw) as AppState;
           if (!parsed.profile.unlockedEventIds) {
             parsed.profile.unlockedEventIds = [];
+          }
+          if (!parsed.profile.eventProClaims) {
+            parsed.profile.eventProClaims = [];
           }
           if (!parsed.profile.id) {
             parsed.profile.id = uid();
@@ -358,15 +368,52 @@ export function InviteStoreProvider({ children }: { children: React.ReactNode })
       updateProfile: (patch) => {
         setState((s) => ({ ...s, profile: { ...s.profile, ...patch } }));
       },
-      unlockEvent: (eventId) => {
+      unlockEvent: (eventId, transactionId) => {
         setState((s) => {
           const existing = s.profile.unlockedEventIds ?? [];
-          if (existing.includes(eventId)) return s;
+          const claims = s.profile.eventProClaims ?? [];
+          // Don't double-claim a transaction. If transactionId is omitted
+          // (Host Plus or admin path) we still record the eventId.
+          if (transactionId && claims.some((c) => c.transactionId === transactionId)) {
+            return s;
+          }
+          if (existing.includes(eventId) && !transactionId) return s;
           return {
             ...s,
             profile: {
               ...s.profile,
-              unlockedEventIds: [...existing, eventId],
+              unlockedEventIds: existing.includes(eventId)
+                ? existing
+                : [...existing, eventId],
+              eventProClaims: transactionId
+                ? [...claims, { transactionId, eventId }]
+                : claims,
+            },
+          };
+        });
+      },
+      syncEventProClaims: (validTransactionIds) => {
+        const valid = new Set(validTransactionIds);
+        setState((s) => {
+          const claims = s.profile.eventProClaims ?? [];
+          const keptClaims = claims.filter((c) => valid.has(c.transactionId));
+          if (keptClaims.length === claims.length) return s;
+          // Remove unlocks tied exclusively to dropped claims (refunds).
+          const droppedEventIds = new Set(
+            claims
+              .filter((c) => !valid.has(c.transactionId))
+              .map((c) => c.eventId),
+          );
+          const stillBacked = new Set(keptClaims.map((c) => c.eventId));
+          const unlocked = (s.profile.unlockedEventIds ?? []).filter(
+            (id) => !droppedEventIds.has(id) || stillBacked.has(id),
+          );
+          return {
+            ...s,
+            profile: {
+              ...s.profile,
+              eventProClaims: keptClaims,
+              unlockedEventIds: unlocked,
             },
           };
         });

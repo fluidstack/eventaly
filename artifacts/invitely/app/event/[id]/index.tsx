@@ -311,7 +311,15 @@ export default function EventDashboard() {
                   </View>
                 </Card>
               </Pressable>
-              <Pressable onPress={() => router.push(`/event/${event.id}/slider`)}>
+              <Pressable
+                onPress={() =>
+                  router.push(
+                    unlocked
+                      ? `/event/${event.id}/slider`
+                      : `/upgrade?eventId=${event.id}`,
+                  )
+                }
+              >
                 <Card>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <View

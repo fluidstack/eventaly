@@ -1,7 +1,15 @@
 // Replit RevenueCat connector wrapper. See `.local/skills/integrations/SKILL.md`.
 import { createClient } from "@replit/revenuecat-sdk/client";
 
-let connectionSettings: any;
+type ConnectionSettings = {
+  settings: {
+    access_token?: string;
+    expires_at?: string;
+    oauth?: { credentials?: { access_token?: string } };
+  };
+};
+
+let connectionSettings: ConnectionSettings | undefined;
 
 async function getApiKey(): Promise<string> {
   if (

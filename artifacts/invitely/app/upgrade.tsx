@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import type { PurchasesPackage } from "react-native-purchases";
 
 import { Body, Button, Card, H1, H2, Label, Pill } from "@/components/ui";
@@ -64,6 +64,31 @@ export default function UpgradeScreen() {
     restore,
   } = useSubscription();
   const { unlockEvent, state } = useInviteStore();
+  const { customerInfo } = useSubscription();
+
+  /**
+   * Returns the next unclaimed Event Pro transaction id (latest first), or
+   * undefined if there isn't one. Each Event Pro purchase shows up as one
+   * non-subscription transaction; we exclude any already bound to a local
+   * unlock so the consumable model stays 1 purchase = 1 event.
+   */
+  const pickUnclaimedTransactionId = (): string | undefined => {
+    const txns = customerInfo?.nonSubscriptionTransactions ?? [];
+    const claimedIds = new Set(
+      (state.profile.eventProClaims ?? []).map((c) => c.transactionId),
+    );
+    const candidates = txns
+      .filter(
+        (t) =>
+          (t.productIdentifier ?? "").toLowerCase().includes("event_pro") &&
+          !claimedIds.has(t.transactionIdentifier),
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime(),
+      );
+    return candidates[0]?.transactionIdentifier;
+  };
   const event = eventId ? state.events.find((e) => e.id === eventId) : undefined;
   const unlockedEventIds = state.profile.unlockedEventIds ?? [];
   const eventLocallyUnlocked = eventId ? unlockedEventIds.includes(eventId) : false;
@@ -111,7 +136,27 @@ export default function UpgradeScreen() {
       const grantedEventPro = Boolean(info?.entitlements?.active?.event_pro);
       const grantedHostPlus = Boolean(info?.entitlements?.active?.host_plus);
       if (meta.entitlement === "event_pro" && grantedEventPro && eventId) {
-        unlockEvent(eventId);
+        // Bind this fresh purchase to the eventId via its RC transaction id
+        // so refunds prune the unlock and the same purchase can't be reused.
+        const txnId = (() => {
+          const txns = info?.nonSubscriptionTransactions ?? [];
+          const claimedIds = new Set(
+            (state.profile.eventProClaims ?? []).map((c) => c.transactionId),
+          );
+          const fresh = txns
+            .filter(
+              (t) =>
+                (t.productIdentifier ?? "").toLowerCase().includes("event_pro") &&
+                !claimedIds.has(t.transactionIdentifier),
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.purchaseDate).getTime() -
+                new Date(a.purchaseDate).getTime(),
+            );
+          return fresh[0]?.transactionIdentifier;
+        })();
+        unlockEvent(eventId, txnId);
       }
       if (grantedHostPlus || grantedEventPro) {
         if (Platform.OS !== "web") {
@@ -168,10 +213,19 @@ export default function UpgradeScreen() {
 
       {!available && (
         <Card>
-          <Body>
-            In-app purchases aren't configured in this build. Add your RevenueCat
-            keys to enable upgrades.
-          </Body>
+          <View style={{ gap: 6 }}>
+            <Body>
+              {Platform.OS === "web"
+                ? "Premium upgrades are available in the Invitely mobile app — open it on iOS or Android to subscribe."
+                : "In-app purchases aren't configured in this build. Add your RevenueCat keys to enable upgrades."}
+            </Body>
+            {Platform.OS === "web" && (
+              <Body muted>
+                The web preview lets you set up events; purchases happen
+                through your App Store or Google Play account.
+              </Body>
+            )}
+          </View>
         </Card>
       )}
 
@@ -198,7 +252,7 @@ export default function UpgradeScreen() {
               label="Apply unlock"
               icon="unlock"
               onPress={() => {
-                unlockEvent(event.id);
+                unlockEvent(event.id, pickUnclaimedTransactionId());
                 router.back();
               }}
             />
@@ -245,7 +299,7 @@ export default function UpgradeScreen() {
         loading={isPending("event_pro")}
         onPress={() => {
           if (canClaimForEvent && event) {
-            unlockEvent(event.id);
+            unlockEvent(event.id, pickUnclaimedTransactionId());
             router.back();
             return;
           }
@@ -306,6 +360,49 @@ export default function UpgradeScreen() {
         loading={isPending("host_plus_monthly")}
         onPress={() => handleBuy("host_plus_monthly")}
       />
+
+      <Card>
+        <View style={{ gap: 8 }}>
+          <Label>Legal</Label>
+          <Body muted>
+            Subscriptions auto-renew until cancelled in your App Store / Play
+            Store account. By purchasing you agree to our Terms of Service and
+            Privacy Policy.
+          </Body>
+          <View style={{ flexDirection: "row", gap: 16 }}>
+            <Pressable
+              onPress={() =>
+                Linking.openURL("https://invitely.app/terms").catch(() => {})
+              }
+            >
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 13,
+                }}
+              >
+                Terms of Service
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() =>
+                Linking.openURL("https://invitely.app/privacy").catch(() => {})
+              }
+            >
+              <Text
+                style={{
+                  color: colors.primary,
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 13,
+                }}
+              >
+                Privacy Policy
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Card>
 
       <Card>
         <View style={{ gap: 10 }}>

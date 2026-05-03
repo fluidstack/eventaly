@@ -79,6 +79,17 @@ export type Profile = {
   language: string;
   billingPlan: "free" | "premium";
   unlockedEventIds: string[];
+  /**
+   * Audit trail of Event Pro consumable purchases that have been applied to a
+   * specific event. Each entry binds a RevenueCat non-subscription
+   * transactionIdentifier to an eventId. Used to:
+   *   - prune unlocks if a transaction is refunded (transaction disappears
+   *     from customerInfo.nonSubscriptionTransactions),
+   *   - prevent the same purchase from being claimed twice,
+   *   - allow a future server-side rehydration after reinstall by writing the
+   *     same data to a RevenueCat subscriber attribute on every change.
+   */
+  eventProClaims: { transactionId: string; eventId: string }[];
 };
 
 export type AppState = {
