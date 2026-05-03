@@ -60,6 +60,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="create"
+        options={{
+          title: "Create",
+          tabBarIcon: ({ color }) => (
+            <Feather name="plus-circle" size={24} color={color} />
+          ),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate("index");
+            navigation.getParent()?.navigate("event/new");
+          },
+        })}
+      />
+      <Tabs.Screen
         name="notifications"
         options={{
           title: "Activity",
