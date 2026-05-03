@@ -142,69 +142,105 @@ export default function NewEventScreen() {
         <Label>Step 2</Label>
         <H2 style={{ marginTop: 6 }}>Hero photo</H2>
       </View>
-      <Pressable onPress={onPickPhoto}>
-        <View
-          style={{
-            height: 220,
-            borderRadius: 18,
-            overflow: "hidden",
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.card,
-          }}
-        >
-          {heroPhotoUri ? (
+      <View style={{ gap: 10 }}>
+        <Pressable onPress={onPickPhoto}>
+          <View
+            style={{
+              height: 220,
+              borderRadius: 18,
+              overflow: "hidden",
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+            }}
+          >
             <Image
-              source={{ uri: heroPhotoUri }}
+              source={heroPhotoUri ? { uri: heroPhotoUri } : template.image}
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
             />
-          ) : (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <Image
-                source={template.image}
+            <View
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                padding: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                backgroundColor: "rgba(0,0,0,0.45)",
+              }}
+            >
+              <Text
                 style={{
-                  position: "absolute",
-                  width: "100%",
-                  height: "100%",
-                  opacity: 0.55,
+                  color: "#fff",
+                  fontFamily: "Inter_500Medium",
+                  fontSize: 12,
+                  flex: 1,
                 }}
-                contentFit="cover"
-              />
+                numberOfLines={1}
+              >
+                {heroPhotoUri
+                  ? "Your photo"
+                  : `${template.name} template image`}
+              </Text>
               <View
                 style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
-                  backgroundColor: colors.background,
+                  flexDirection: "row",
                   alignItems: "center",
-                  justifyContent: "center",
+                  gap: 6,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  backgroundColor: "#fff",
                 }}
               >
-                <Feather name="camera" size={22} color={colors.primary} />
+                <Feather name="camera" size={14} color="#111" />
+                <Text
+                  style={{
+                    color: "#111",
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 12,
+                  }}
+                >
+                  {heroPhotoUri ? "Change photo" : "Add your photo"}
+                </Text>
               </View>
-              <Text
-                style={{
-                  color: colors.foreground,
-                  fontFamily: "Inter_600SemiBold",
-                  fontSize: 14,
-                }}
-              >
-                Upload your photo
-              </Text>
-              <Text
-                style={{
-                  color: colors.mutedForeground,
-                  fontFamily: "Inter_400Regular",
-                  fontSize: 12,
-                }}
-              >
-                Or keep the {template.name.toLowerCase()} template image
-              </Text>
             </View>
-          )}
-        </View>
-      </Pressable>
+          </View>
+        </Pressable>
+        {heroPhotoUri && (
+          <Pressable
+            onPress={() => setHeroPhotoUri(undefined)}
+            style={({ pressed }) => ({
+              alignSelf: "flex-start",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.card,
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <Feather name="rotate-ccw" size={13} color={colors.foreground} />
+            <Text
+              style={{
+                color: colors.foreground,
+                fontFamily: "Inter_600SemiBold",
+                fontSize: 12,
+              }}
+            >
+              Use template image
+            </Text>
+          </Pressable>
+        )}
+      </View>
 
       <View>
         <Label>Step 3</Label>

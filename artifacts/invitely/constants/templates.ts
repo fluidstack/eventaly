@@ -1,6 +1,13 @@
 import { ImageSourcePropType } from "react-native";
 
-export type TemplateId = "birthday" | "wedding" | "dinner" | "baby";
+export type TemplateId =
+  | "birthday"
+  | "wedding"
+  | "dinner"
+  | "baby"
+  | "christmas"
+  | "newyear"
+  | "christening";
 
 export type Template = {
   id: TemplateId;
@@ -58,6 +65,42 @@ export const TEMPLATES: Template[] = [
       "A little someone is on the way — come shower us with love.",
       "Small feet, big plans. Join us to celebrate the new arrival.",
       "Soft hugs, sweet treats, and the tiniest guest of honor.",
+    ],
+  },
+  {
+    id: "christmas",
+    name: "Christmas",
+    tagline: "Warm fires & wrapped gifts",
+    accent: "#DC2626",
+    image: require("../assets/images/template-christmas.png"),
+    copyHints: [
+      "Merry, bright, and a little bit chaotic — come spend Christmas with us.",
+      "Mulled wine is on, the tree is up, and your seat at the table is waiting.",
+      "Cozy sweaters, twinkly lights, and people we love. Join us this Christmas.",
+    ],
+  },
+  {
+    id: "newyear",
+    name: "New Year's",
+    tagline: "Champagne & midnight kisses",
+    accent: "#CA8A04",
+    image: require("../assets/images/template-newyear.png"),
+    copyHints: [
+      "One more night of the year — let's send it off in style.",
+      "Glitter, champagne, and a countdown together. Join us on NYE.",
+      "Pop the bubbly and pull up — we're ringing in the new year together.",
+    ],
+  },
+  {
+    id: "christening",
+    name: "Christening",
+    tagline: "A little blessing, a big day",
+    accent: "#0EA5E9",
+    image: require("../assets/images/template-christening.png"),
+    copyHints: [
+      "Please join us as we celebrate our little one's christening.",
+      "A quiet morning of blessings, followed by lunch with the people we love.",
+      "Soft prayers, sweet smiles — come share this special day with us.",
     ],
   },
 ];
